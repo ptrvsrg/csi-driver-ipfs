@@ -2,7 +2,7 @@
 
 ## Pipelines
 
-Dev PR workflows (`ci-dev-*.yml`) use `pull_request_target` with `paths` globs so they run only when relevant files change (GitHub glob syntax, not regex).
+Dev PR workflows (`ci-dev-*.yml`) use `pull_request` with `paths` globs so they run only when relevant files change (GitHub glob syntax, not regex).
 
 - `ci-dev-golang.yml`:
   - (`mod-verify` ∥ `go-fmt` ∥ `go-vet` ∥ `check-license` ∥ `goreleaser-check`) → (`lint` ∥ `unit`) → `build` → `docker-build-push`
