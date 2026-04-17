@@ -16,6 +16,13 @@ version: 2
 
 project_name: csi-driver-ipfs
 
+# Helm chart tags (chart/*) must not become "previous" for driver releases.
+# Each entry is passed to `git describe --exclude=...` (fnmatch). GoReleaser Pro
+# offers ignore_tag_prefixes instead; add more rows here if new tag namespaces appear.
+git:
+  ignore_tags:
+    - chart/*
+
 # Git tags are driver/v*; CI sets GORELEASER_CURRENT_TAG=v… so semver and {{ .Version }} work.
 before:
   hooks:
@@ -55,54 +62,40 @@ checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-next"
+  version_template: '{{ incpatch (trimprefix .Tag "driver/") }}-next'
 
 changelog:
   sort: asc
 
-dockers:
-  - image_templates:
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-amd64'
-      - "ghcr.io/ptrvsrg/csi-driver-ipfs:latest-amd64"
+dockers_v2:
+  - id: csi-driver-ipfs
     dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - '--build-arg=VERSION={{ .Version }}'
-      - "--build-arg=GIT_COMMIT={{ .FullCommit }}"
-      - "--build-arg=BUILD_DATE={{ .Date }}"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title=csi-driver-ipfs"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-    goos: linux
-    goarch: amd64
-  - image_templates:
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-arm64'
-      - "ghcr.io/ptrvsrg/csi-driver-ipfs:latest-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - '--build-arg=VERSION={{ .Version }}'
-      - "--build-arg=GIT_COMMIT={{ .FullCommit }}"
-      - "--build-arg=BUILD_DATE={{ .Date }}"
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title=csi-driver-ipfs"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-    goos: linux
-    goarch: arm64
-
-docker_manifests:
-  - name_template: 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}'
-    image_templates:
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-amd64'
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-arm64'
-  - name_template: "ghcr.io/ptrvsrg/csi-driver-ipfs:latest"
-    image_templates:
-      - "ghcr.io/ptrvsrg/csi-driver-ipfs:latest-amd64"
-      - "ghcr.io/ptrvsrg/csi-driver-ipfs:latest-arm64"
+    ids:
+      - csi-driver-ipfs
+    images:
+      - ghcr.io/ptrvsrg/csi-driver-ipfs
+    tags:
+      - "{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: csi-driver-ipfs
+      org.opencontainers.image.description: CSI driver for IPFS volumes
+      org.opencontainers.image.source: https://github.com/ptrvsrg/csi-driver-ipfs
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+    build_args:
+      VERSION: "{{ .Version }}"
+      GIT_COMMIT: "{{ .FullCommit }}"
+      BUILD_DATE: "{{ .Date }}"
+    extra_files:
+      - go.mod
+      - go.sum
+      - cmd/
+      - pkg/
 
 release:
   github:
