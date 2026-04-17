@@ -96,13 +96,13 @@ jobs:
       - charts-build
     steps:
       - name: Download docs artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: docs-build
           path: .pages
 
       - name: Download charts artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: charts-repo
           path: .pages/charts
