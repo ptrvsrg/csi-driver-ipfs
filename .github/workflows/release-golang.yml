@@ -51,17 +51,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # OSS GoReleaser parses semver from the *current* tag; git tag stays driver/v*.
+      # OSS GoReleaser needs a semver git tag on $GITHUB_SHA; remote only has driver/v*.
+      # Set GORELEASER_CURRENT_TAG and add a local-only tag (not pushed) on this commit.
       # https://goreleaser.com/cookbooks/set-a-custom-git-tag/
-      - name: Set GORELEASER_CURRENT_TAG (strip driver/ for semver)
+      - name: Semver tag for GoReleaser (local + GORELEASER_CURRENT_TAG)
         if: github.ref_type == 'tag'
         run: |
           set -euo pipefail
           ref="${GITHUB_REF_NAME}"
           case "$ref" in
             driver/v*)
-              echo "GORELEASER_CURRENT_TAG=${ref#driver/}" >> "$GITHUB_ENV"
-              echo "GoReleaser current tag (semver): ${ref#driver/}"
+              sem="${ref#driver/}"
+              echo "GORELEASER_CURRENT_TAG=${sem}" >> "$GITHUB_ENV"
+              git tag -f "${sem}" "$GITHUB_SHA"
+              echo "GoReleaser: GORELEASER_CURRENT_TAG=${sem}, local tag -> ${GITHUB_SHA}"
               ;;
             *)
               echo "::error::Release workflow expected tag driver/v*, got: ${ref}" >&2
@@ -73,7 +76,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: '~> v2'
           args: ${{ github.event_name == 'workflow_dispatch' && 'release --snapshot --clean' || 'release --clean' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
