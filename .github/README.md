@@ -18,11 +18,11 @@
 
 | File                  | Trigger                                                  | Purpose                                                                                   |
 |-----------------------|----------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| `ci-dev-golang.yml`   | `pull_request_target` (path-filtered)                    | Go checks, `goreleaser check`, golangci-lint, tests, dev image to ghcr (same-repo PRs)   |
-| `ci-dev-charts.yml`   | `pull_request_target` (path-filtered)                    | Helm lint, helm-unittest, chart packaging artifacts                                       |
-| `ci-dev-markdown.yml` | `pull_request_target` (path-filtered)                    | Markdown lint when matching `**/*.md` or markdownlint config                              |
-| `ci-dev-docs.yml`     | `pull_request_target` (path-filtered)                    | Docusaurus build for `docs/**` changes                                                    |
-| `ci-dev-actions.yml`  | `pull_request_target` (path-filtered)                    | `actionlint` on `.github/workflows/**` (and `.github/Makefile` when workflows tooling changes) |
+| `ci-dev-golang.yml`   | `pull_request` (path-filtered)                         | Go checks, `goreleaser check`, golangci-lint, tests, dev image to ghcr (same-repo PRs)   |
+| `ci-dev-charts.yml`   | `pull_request` (path-filtered)                         | Helm lint, helm-unittest, chart packaging artifacts                                       |
+| `ci-dev-markdown.yml` | `pull_request` (path-filtered)                         | Markdown lint when matching `**/*.md` or markdownlint config                              |
+| `ci-dev-docs.yml`     | `pull_request` (path-filtered)                         | Docusaurus build for `docs/**` changes                                                    |
+| `ci-dev-actions.yml`  | `pull_request` (path-filtered)                         | `actionlint` on `.github/workflows/**` (and `.github/Makefile` when workflows tooling changes) |
 | `e2e.yml`             | `pull_request` with `labeled` event                      | E2E in Kind using Ginkgo suites                                                           |
 | `release-golang.yml`  | tag `driver/v*` or manual                                | Build and publish binaries + image via GoReleaser                                         |
 | `release-chart.yml`   | tags `chart/csi-driver-ipfs/v*`, `chart/ipfs-cluster/v*` | Verify tag/version and publish chart release assets                                       |
@@ -31,7 +31,7 @@
 
 ## Path filters (`ci-dev-*.yml`)
 
-Each `ci-dev-*.yml` workflow lists `paths:` under `pull_request_target` so it runs only when matching files change. Patterns are **GitHub Actions globs** (minimatch), not regular expressions — see [workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#onpushpull_requestpull_request_targetpathspaths-ignore).
+Each `ci-dev-*.yml` workflow lists `paths:` under `pull_request` so it runs only when matching files change. Patterns are **GitHub Actions globs** (minimatch), not regular expressions — see [workflow syntax](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onpull_request).
 
 ## Local validation
 
