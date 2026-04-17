@@ -60,6 +60,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Go mod verify
@@ -76,6 +77,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Go fmt
@@ -92,6 +94,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Go vet
@@ -118,6 +121,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Install GoReleaser
@@ -143,6 +147,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Go mod download
@@ -175,6 +180,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Unit tests
@@ -194,6 +200,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Build binary (sanity)
@@ -246,3 +253,5 @@ jobs:
           tags: |
             ${{ env.GHCR_IMAGE }}:dev-pr-${{ github.event.number }}
             ${{ env.GHCR_IMAGE }}:dev-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

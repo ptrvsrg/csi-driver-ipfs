@@ -71,6 +71,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Cache Helm CLI (hosted tool cache)
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/helm
+          key: ${{ runner.os }}-helm-cli-${{ runner.arch }}-${{ env.HELM_VERSION }}
+
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
@@ -92,6 +98,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Cache Helm CLI + helm-unittest plugin
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.tool_cache }}/helm
+            ~/.local/share/helm/plugins
+          key: ${{ runner.os }}-helm-ut-${{ runner.arch }}-${{ env.HELM_VERSION }}-${{ env.HELM_UNITTEST_VERSION }}
 
       # d3adb5/helm-unittest-action installs the plugin without --verify=false, which Helm 4 rejects.
       # It also passes --color to helm unittest, which breaks on Helm 4 (flag parsing).
@@ -130,6 +144,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Cache Helm CLI (hosted tool cache)
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/helm
+          key: ${{ runner.os }}-helm-cli-${{ runner.arch }}-${{ env.HELM_VERSION }}
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
