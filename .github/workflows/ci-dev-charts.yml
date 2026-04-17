@@ -138,6 +138,8 @@ jobs:
 
       - name: "Helm: package - ${{ matrix.chart }}"
         uses: helm/chart-releaser-action@v1.7.0
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: ${{ env.CHART_RELEASER_VERSION }}
           config: charts/cr.yaml
