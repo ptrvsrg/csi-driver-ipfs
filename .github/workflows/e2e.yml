@@ -24,7 +24,7 @@ permissions:
   pull-requests: write
 
 env:
-  HELM_VERSION: v4.11.0
+  HELM_VERSION: v4.1.4
   KUBECTL_VERSION: v1.35.0
   KIND_VERSION: 0.31.0
   GINKGO_VERSION: v2.28.1

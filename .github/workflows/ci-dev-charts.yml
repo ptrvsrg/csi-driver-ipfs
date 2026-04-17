@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 env:
-  HELM_VERSION: v4.11.0
+  HELM_VERSION: v4.1.4
   HELM_UNITTEST_VERSION: "1.0.3"
   CHART_RELEASER_VERSION: "1.8.1"
 
