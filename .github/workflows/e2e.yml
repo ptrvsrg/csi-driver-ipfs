@@ -1,0 +1,155 @@
+# Copyright 2026 ptrvsrg.
+#
+# Licensed under the Apache License, Version 2.0 (the License);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: E2E tests
+
+on:
+  pull_request:
+    types:
+     - labeled
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  HELM_VERSION: v4.11.0
+  KUBECTL_VERSION: v1.35.0
+  KIND_VERSION: 0.31.0
+  GINKGO_VERSION: v2.28.1
+  EXTERNAL_SNAPSHOTTER_VERSION: v8.5.0
+
+jobs:
+  remove-label:
+    name: "Remove e2e label"
+    if: ${{ github.event.label.name == 'e2e' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove e2e label
+        uses: mondeja/remove-labels-gh-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: e2e
+
+  check-image:
+    name: "Check Docker image"
+    needs:
+      - remove-label
+    if: ${{ github.event.label.name == 'e2e' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load CSI Driver image
+        run: |
+          docker image pull ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}
+
+  e2e:
+    name: "E2E: kind + helm + ginkgo"
+    needs:
+      - check-image
+    if: ${{ github.event.label.name == 'e2e' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Set up Kind
+        uses: helm/kind-action@v1
+        with:
+          version: ${{ env.KIND_VERSION }}
+          kubectl_version: ${{ env.KUBECTL_VERSION }}
+          install_only: true
+
+      - name: Set up Ginkgo
+        run: |
+          go install github.com/onsi/ginkgo/v2/ginkgo@${{ env.GINKGO_VERSION }}
+
+      - name: Create k8s cluster
+        working-directory: test/e2e
+        run: |
+          kind create cluster --name csi-ipfs-e2e --config env/kind-config.yaml
+          kubectl --context kind-csi-ipfs-e2e wait --for=condition=Ready nodes --all --timeout=120s
+
+      - name: Install Snapshot CRDs
+        run: |
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotclasses.yaml
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotcontents.yaml
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshots.yaml
+
+      - name: Deploy Snapshot Controller
+        run: |
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml
+          kubectl --context kind-csi-ipfs-e2e apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${{ env.EXTERNAL_SNAPSHOTTER_VERSION }}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml
+          kubectl --context kind-csi-ipfs-e2e rollout status deployment/snapshot-controller -n kube-system --timeout=180s
+
+      - name: Deploy IPFS cluster
+        run: |
+          kubectl create ns ipfs 2>/dev/null || true
+          helm upgrade --install ipfs-cluster charts/ipfs-cluster -f test/e2e/env/ipfs-values.yaml -n ipfs --wait --timeout=600s
+          kubectl --context kind-csi-ipfs-e2e wait --for=condition=ready pod -l app.kubernetes.io/name=ipfs-cluster -n ipfs --timeout=120s
+
+      - name: Load CSI Driver image
+        working-directory: test/e2e
+        run: |
+          docker image pull ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}
+          docker image tag ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }} ghcr.io/ptrvsrg/csi-driver-ipfs:latest
+          kind load docker-image ghcr.io/ptrvsrg/csi-driver-ipfs:latest --name csi-ipfs-e2e
+
+      - name: Deploy CSI IPFS
+        run: |
+          kubectl create ns csi-ipfs 2>/dev/null || true
+          helm upgrade --install csi-driver-ipfs charts/csi-driver-ipfs -f test/e2e/env/csi-values.yaml -n csi-ipfs --wait --timeout=600s
+          kubectl --context kind-csi-ipfs-e2e wait --for=condition=ready pod -l app=csi-ipfs-controller -n csi-ipfs --timeout=120s
+          kubectl --context kind-csi-ipfs-e2e wait --for=condition=ready pod -l app=csi-ipfs-node -n csi-ipfs --timeout=120s
+
+      - name: Run tests
+        env:
+          E2E_RUN: "1"
+        working-directory: test/e2e
+        run: |
+          ginkgo -v -r --keep-going --timeout=30m ./suites/...
+
+      - name: Cleanup Kind cluster
+        if: always()
+        working-directory: test/e2e
+        run: |
+          kind delete cluster --name csi-ipfs-e2e 2>/dev/null || true
