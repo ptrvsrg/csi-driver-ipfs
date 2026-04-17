@@ -1,0 +1,16 @@
+/* Intro page: keep Wikimedia IPFS logo readable without dominating the page */
+.theme-doc-markdown img[alt="IPFS logo"] {
+  max-width: 220px;
+  width: 100%;
+  height: auto;
+}
+
+:root {
+  --ifm-color-primary: #1f6feb;
+  --ifm-color-primary-dark: #1b62d6;
+  --ifm-color-primary-darker: #195dca;
+  --ifm-color-primary-darkest: #154ca6;
+  --ifm-color-primary-light: #2d78ef;
+  --ifm-color-primary-lighter: #3a81f0;
+  --ifm-color-primary-lightest: #5c95f3;
+}

@@ -1,0 +1,63 @@
+# Headless service for StatefulSet pod DNS (ipfs-cluster-0.ipfs-cluster.ns.svc.cluster.local)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ipfs-cluster.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ipfs-cluster.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: api-http
+      port: {{ .Values.service.apiPort }}
+      targetPort: api-http
+      protocol: TCP
+    - name: proxy-http
+      port: {{ .Values.service.proxyPort }}
+      targetPort: proxy-http
+      protocol: TCP
+    - name: cluster-swarm
+      port: {{ .Values.service.clusterSwarmPort }}
+      targetPort: cluster-swarm
+      protocol: TCP
+    - name: ipfs-api
+      port: {{ .Values.service.ipfsApiPort }}
+      targetPort: api
+      protocol: TCP
+    - name: ipfs-gateway
+      port: {{ .Values.service.ipfsGatewayPort }}
+      targetPort: gateway
+      protocol: TCP
+    - name: ipfs-swarm
+      port: {{ .Values.service.ipfsSwarmPort }}
+      targetPort: swarm
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "ipfs-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+# Optional: ClusterIP service for API access (e.g. from CSI driver or clients)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ipfs-cluster.fullname" . }}-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ipfs-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: api-http
+      port: {{ .Values.service.apiPort }}
+      targetPort: api-http
+      protocol: TCP
+    - name: proxy-http
+      port: {{ .Values.service.proxyPort }}
+      targetPort: proxy-http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "ipfs-cluster.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}

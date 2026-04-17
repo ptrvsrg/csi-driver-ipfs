@@ -1,0 +1,13 @@
+{
+  // markdownlint-cli2 does NOT read .markdownlintignore (only markdownlint-cli v1).
+  // Rule overrides stay in .markdownlint.json (auto-loaded).
+  "gitignore": true,
+  "ignores": [
+    "node_modules/**",
+    "vendor/**",
+    "charts/dist/**"
+  ],
+  "globs": [
+    "**/*.md"
+  ]
+}

@@ -1,0 +1,19 @@
+The CSI IPFS Driver has been installed.
+
+1. Ensure an IPFS node or IPFS Cluster is running and reachable at the configured `ipfsApi` / `node.ipfsApi`.
+
+2. List pods:
+   kubectl --namespace {{ .Release.Namespace }} get pods -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+3. Create a StorageClass and PVC to use the driver (if not created by the chart):
+   kubectl apply -f - <<EOF
+   apiVersion: storage.k8s.io/v1
+   kind: StorageClass
+   metadata:
+     name: ipfs-csi
+   provisioner: {{ .Values.driver.name }}
+   volumeBindingMode: Immediate
+   reclaimPolicy: Delete
+   EOF
+
+4. Driver name for PVCs: {{ .Values.driver.name }}

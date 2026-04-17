@@ -16,27 +16,27 @@
 # https://github.com/actions/labeler
 # Labels are applied to PRs based on changed files (match object syntax).
 
-driver:
+scope/driver:
   - changed-files:
       - any-glob-to-any-file:
           - pkg/driver/**/*
 
-ipfs:
+scope/ipfs:
   - changed-files:
       - any-glob-to-any-file:
           - pkg/ipfs/**/*
 
-kubernetes:
+scope/kubernetes:
   - changed-files:
       - any-glob-to-any-file:
           - pkg/kubernetes/**/*
 
-helm:
+scope/helm:
   - changed-files:
       - any-glob-to-any-file:
           - charts/**/*
 
-ci:
+scope/ci:
   - changed-files:
       - any-glob-to-any-file:
           - .github/**/*
@@ -49,12 +49,12 @@ ci:
           - .markdownlint-cli2.jsonc
           - .mockery.yaml
 
-markdown:
+scope/markdown:
   - changed-files:
       - any-glob-to-any-file:
           - "**/*.md"
 
-dependencies:
+scope/deps:
   - changed-files:
       - any-glob-to-any-file:
           - go.mod
@@ -63,7 +63,7 @@ dependencies:
           - package-lock.json
           - yarn.lock
 
-golang:
+scope/golang:
   - changed-files:
       - any-glob-to-any-file:
           - "**/*.go"

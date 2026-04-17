@@ -56,6 +56,12 @@ jobs:
           cache: yarn
           cache-dependency-path: docs/yarn.lock
 
+      - name: Cache Docusaurus incremental (.docusaurus)
+        uses: actions/cache@v4
+        with:
+          path: docs/.docusaurus
+          key: ${{ runner.os }}-docusaurus-${{ hashFiles('docs/yarn.lock', 'docs/package.json', 'docs/docusaurus.config.js', 'docs/sidebars.js') }}
+
       - name: Build docs
         run: |
           yarn --cwd docs install --frozen-lockfile

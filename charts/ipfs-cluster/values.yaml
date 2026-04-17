@@ -1,0 +1,60 @@
+# Number of IPFS Cluster peers (StatefulSet replicas)
+replicas: 3
+
+# Cluster secret (raw string, will be base64-encoded). Generate with: od -vN 32 -An -tx1 /dev/urandom | tr -d ' \n'
+# Leave empty in git and provide via --set or existingSecret in real deployments.
+clusterSecret: ""
+
+# Existing secret containing keys: cluster-secret, bootstrap-peer-priv-key (optional for non-bootstrap peers)
+# If set, clusterSecret is ignored.
+existingSecret: ""
+
+# Bootstrap peer ID (from ipfs-key or first peer's service.json). Only peer-0 uses this as its identity.
+bootstrapPeerId: ""
+# Bootstrap peer private key (base64). Required for peer-0 when not using existingSecret.
+bootstrapPeerPrivKey: ""
+
+image:
+  # Image for IPFS (Kubo)
+  ipfs:
+    repository: ipfs/kubo
+    tag: v0.39.0
+    pullPolicy: IfNotPresent
+  # Image for IPFS Cluster
+  cluster:
+    repository: ipfs/ipfs-cluster
+    tag: v1.1.5
+    pullPolicy: IfNotPresent
+
+# Storage for cluster state and IPFS repo
+storage:
+  cluster:
+    size: 5Gi
+    storageClassName: "" # use default
+  ipfs:
+    size: 50Gi
+    storageClassName: ""
+
+# Service configuration
+service:
+  type: ClusterIP
+  # Ports: api (9094), proxy (9095), cluster-swarm (9096), ipfs-api (5001), ipfs-gateway (8080), ipfs-swarm (4001)
+  apiPort: 9094
+  proxyPort: 9095
+  clusterSwarmPort: 9096
+  ipfsApiPort: 5001
+  ipfsGatewayPort: 8080
+  ipfsSwarmPort: 4001
+
+# Resource limits
+resources:
+  ipfs: {}
+  cluster: {}
+
+# Node selector / affinity / tolerations
+nodeSelector: {}
+affinity: {}
+tolerations: []
+
+nameOverride: ""
+fullnameOverride: ""

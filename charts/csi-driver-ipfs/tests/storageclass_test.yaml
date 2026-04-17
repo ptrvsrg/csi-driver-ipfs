@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: StorageClass
+templates:
+  - storageclass.yaml
+release:
+  name: test-release
+  namespace: default
+tests:
+  - it: should create StorageClass when enabled
+    set:
+      storageClass.create: true
+      storageClass.name: ipfs-csi
+    asserts:
+      - isKind:
+          of: StorageClass
+      - equal:
+          path: metadata.name
+          value: ipfs-csi
+      - equal:
+          path: provisioner
+          value: ipfs.csi.ptrvsrg.github.io
+      - notExists:
+          path: mountOptions

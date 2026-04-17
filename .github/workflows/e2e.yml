@@ -21,32 +21,34 @@ on:
 
 permissions:
   contents: read
+  packages: read
   pull-requests: write
+  issues: write
 
 env:
-  HELM_VERSION: v4.11.0
+  HELM_VERSION: v4.1.4
   KUBECTL_VERSION: v1.35.0
-  KIND_VERSION: 0.31.0
+  KIND_VERSION: v0.31.0
   GINKGO_VERSION: v2.28.1
   EXTERNAL_SNAPSHOTTER_VERSION: v8.5.0
 
 jobs:
   remove-label:
     name: "Remove e2e label"
-    if: ${{ github.event.label.name == 'e2e' }}
+    if: ${{ github.event.label.name == 'e2e/run' }}
     runs-on: ubuntu-latest
     steps:
       - name: Remove e2e label
         uses: mondeja/remove-labels-gh-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          labels: e2e
+          labels: e2e/run
 
   check-image:
     name: "Check Docker image"
     needs:
       - remove-label
-    if: ${{ github.event.label.name == 'e2e' }}
+    if: ${{ github.event.label.name == 'e2e/run' }}
     runs-on: ubuntu-latest
     steps:
       - name: Log in to Registry
@@ -56,20 +58,38 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Load CSI Driver image
+      - name: Verify CSI driver image exists on GHCR
         run: |
-          docker image pull ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}
+          set -euo pipefail
+          image='ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}'
+          if ! docker manifest inspect "$image" >/dev/null 2>&1; then
+            echo "::error title=E2E image missing::No manifest for ${image}. Run or wait for CI DEV (Go) docker-build-push for this PR merge SHA, then re-add the e2e label."
+            exit 1
+          fi
+          echo "OK: manifest present — ${image}"
 
   e2e:
     name: "E2E: kind + helm + ginkgo"
     needs:
       - check-image
-    if: ${{ github.event.label.name == 'e2e' }}
+    if: ${{ github.event.label.name == 'e2e/run' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Cache Kind + kubectl (hosted tool cache)
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/kind
+          key: ${{ runner.os }}-kind-tool-${{ runner.arch }}-${{ env.KIND_VERSION }}-${{ env.KUBECTL_VERSION }}
+
+      - name: Cache Helm CLI
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/helm
+          key: ${{ runner.os }}-helm-cli-${{ runner.arch }}-${{ env.HELM_VERSION }}
 
       - name: Log in to Registry
         uses: docker/login-action@v3
@@ -82,6 +102,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
           cache-dependency-path: go.sum
 
       - name: Set up Helm
@@ -153,3 +174,69 @@ jobs:
         working-directory: test/e2e
         run: |
           kind delete cluster --name csi-ipfs-e2e 2>/dev/null || true
+
+  e2e-label-success:
+    name: "PR label: e2e/success"
+    needs:
+      - remove-label
+      - check-image
+      - e2e
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply e2e/success (remove e2e/fail)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('No pull_request in event payload');
+              return;
+            }
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: pr, name: 'e2e/fail',
+              });
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: pr, labels: ['e2e/success'],
+            });
+
+  e2e-label-fail:
+    name: "PR label: e2e/fail"
+    needs:
+      - remove-label
+      - check-image
+      - e2e
+    if: >-
+      always() &&
+      (needs.remove-label.result == 'failure' || needs.remove-label.result == 'cancelled' ||
+       needs.check-image.result == 'failure' || needs.check-image.result == 'cancelled' ||
+       needs.e2e.result == 'failure' || needs.e2e.result == 'cancelled')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply e2e/fail (remove e2e/success)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('No pull_request in event payload');
+              return;
+            }
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: pr, name: 'e2e/success',
+              });
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: pr, labels: ['e2e/fail'],
+            });

@@ -29,9 +29,11 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 jobs:
   label:
+    name: Add base labels
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -43,3 +45,12 @@ jobs:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           configuration-path: .github/labeler.yml
           sync-labels: true
+
+  pr-size:
+    name: Add PR size labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label PR by changed lines
+        uses: CodelyTV/pr-size-labeler@v1.10.4
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
