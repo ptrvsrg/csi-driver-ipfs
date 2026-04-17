@@ -39,7 +39,14 @@ EOF
 chart_version_at() {
   local commit="$1"
   local chart="$2"
-  git show "${commit}:${chart}/Chart.yaml" 2>/dev/null | awk '
+  local blob
+  # With pipefail, a missing path makes `git show` exit 128 and aborts the whole script.
+  # BASE may not have charts/ yet (first import PR or new chart directory).
+  if ! blob=$(git show "${commit}:${chart}/Chart.yaml" 2>/dev/null); then
+    printf ''
+    return 0
+  fi
+  printf '%s\n' "${blob}" | awk '
     /^version:/ {
       sub(/^version:[[:space:]]+/, "")
       gsub(/^["'\'']|["'\'']$/, "")
@@ -73,11 +80,22 @@ if [[ -z "$changed_files" ]]; then
   exit 0
 fi
 
+# Only Helm chart roots (directory with Chart.yaml at HEAD), not repo files like charts/README.md.
 charts=$(
   printf '%s\n' "${changed_files}" |
     awk -F/ '$1 == "charts" && NF >= 2 { print $1"/"$2 }' |
-    sort -u
+    sort -u |
+    while IFS= read -r chart; do
+      [[ -z "${chart}" ]] && continue
+      git cat-file -e "${HEAD_SHA}:${chart}/Chart.yaml" 2>/dev/null || continue
+      printf '%s\n' "${chart}"
+    done | sort -u
 )
+
+if [[ -z "${charts}" ]]; then
+  echo "No Helm chart roots changed (only non-chart files under charts/) — skipping version bump check."
+  exit 0
+fi
 
 rc=0
 while IFS= read -r chart; do

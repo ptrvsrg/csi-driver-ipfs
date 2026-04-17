@@ -93,12 +93,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Helm and Unit test plugin
-        uses: d3adb5/helm-unittest-action@v2
+      # d3adb5/helm-unittest-action installs the plugin without --verify=false, which Helm 4 rejects.
+      # It also passes --color to helm unittest, which breaks on Helm 4 (flag parsing).
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
         with:
-          helm-version: ${{ env.HELM_VERSION }}
-          unittest-version: ${{ env.HELM_UNITTEST_VERSION }}
-          charts: ${{ matrix.chart }}
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install helm-unittest
+        run: |
+          set -euo pipefail
+          if helm plugin list | sed '1d' | awk '{print $1}' | grep -q '^unittest$'; then
+            echo "helm-unittest already present"
+          else
+            helm plugin install https://github.com/helm-unittest/helm-unittest \
+              --version "${{ env.HELM_UNITTEST_VERSION }}" \
+              --verify=false
+          fi
+
+      - name: Helm dependency update
+        run: helm dependency update "charts/${{ matrix.chart }}"
+
+      - name: Run helm unittest
+        run: helm unittest "charts/${{ matrix.chart }}"
 
   package:
     name: 'Helm: package (cr)'

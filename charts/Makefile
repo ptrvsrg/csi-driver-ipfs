@@ -91,8 +91,8 @@ clean: ## Remove $(DIST_DIR) and downloaded $(CR_BIN).
 
 .PHONY: deps/unittest
 deps/unittest: ## Install helm-unittest plugin if missing.
-	@if ! helm plugin list 2>/dev/null | awk '{print $$1}' | grep -qx 'helm-unittest'; then \
-		helm plugin install 'https://github.com/helm-unittest/helm-unittest.git'; \
+	@if ! helm plugin list 2>/dev/null | awk 'NR>1 {print $$1}' | grep -qx 'unittest'; then \
+		helm plugin install 'https://github.com/helm-unittest/helm-unittest.git' --verify=false; \
 	fi
 
 CR_VERSION ?= 1.8.1
