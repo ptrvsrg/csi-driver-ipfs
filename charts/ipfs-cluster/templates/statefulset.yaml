@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ipfs-cluster.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ipfs-cluster.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "ipfs-cluster.fullname" . }}
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ipfs-cluster.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        {{- include "ipfs-cluster.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: configure-ipfs
+          image: "{{ .Values.image.ipfs.repository }}:{{ .Values.image.ipfs.tag }}"
+          imagePullPolicy: {{ .Values.image.ipfs.pullPolicy }}
+          command: ["sh", "/scripts/configure-ipfs.sh"]
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: scripts
+              mountPath: /scripts
+      containers:
+        - name: ipfs
+          image: "{{ .Values.image.ipfs.repository }}:{{ .Values.image.ipfs.tag }}"
+          imagePullPolicy: {{ .Values.image.ipfs.pullPolicy }}
+          env:
+            - name: IPFS_FD_MAX
+              value: "4096"
+          ports:
+            - name: swarm
+              containerPort: 4001
+              protocol: TCP
+            - name: api
+              containerPort: 5001
+              protocol: TCP
+            - name: gateway
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command: ["ipfs", "id", "--offline"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["ipfs", "id", "--offline"]
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 15
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+          resources:
+            {{- toYaml .Values.resources.ipfs | nindent 12 }}
+        - name: ipfs-cluster
+          image: "{{ .Values.image.cluster.repository }}:{{ .Values.image.cluster.tag }}"
+          imagePullPolicy: {{ .Values.image.cluster.pullPolicy }}
+          command: ["sh", "/scripts/entrypoint.sh"]
+          env:
+            - name: BOOTSTRAP_PEER_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "ipfs-cluster.scriptsConfigMapName" . }}
+                  key: bootstrap-peer-id
+            - name: BOOTSTRAP_PEER_PRIV_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret | default (printf "%s-secret" (include "ipfs-cluster.fullname" .)) }}
+                  key: bootstrap-peer-priv-key
+                  optional: true
+            - name: CLUSTER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret | default (printf "%s-secret" (include "ipfs-cluster.fullname" .)) }}
+                  key: cluster-secret
+            - name: CLUSTER_SVC_NAME
+              value: {{ include "ipfs-cluster.fullname" . }}
+          ports:
+            - name: api-http
+              containerPort: 9094
+              protocol: TCP
+            - name: proxy-http
+              containerPort: 9095
+              protocol: TCP
+            - name: cluster-swarm
+              containerPort: 9096
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: cluster-swarm
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: cluster-storage
+              mountPath: /data/ipfs-cluster
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            {{- toYaml .Values.resources.cluster | nindent 12 }}
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "ipfs-cluster.scriptsConfigMapName" . }}
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: cluster-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.storage.cluster.storageClassName }}
+        storageClassName: {{ .Values.storage.cluster.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.cluster.size }}
+    - metadata:
+        name: ipfs-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.storage.ipfs.storageClassName }}
+        storageClassName: {{ .Values.storage.ipfs.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.ipfs.size }}

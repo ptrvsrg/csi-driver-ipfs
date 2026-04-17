@@ -1,0 +1,208 @@
+nameOverride: ""
+customLabels: {}
+
+# Default image registry for Kubernetes CSI sidecar images
+image:
+    baseRepo: registry.k8s.io
+    # CSI driver binary (this project)
+    driver:
+        repository: ghcr.io/ptrvsrg/csi-driver-ipfs
+        tag: latest
+        pullPolicy: IfNotPresent
+    # Legacy key for backward compatibility (same as driver)
+    ipfs:
+        repository: ghcr.io/ptrvsrg/csi-driver-ipfs
+        tag: latest
+        pullPolicy: IfNotPresent
+    csiProvisioner:
+        repository: /sig-storage/csi-provisioner
+        tag: v6.1.1
+        pullPolicy: IfNotPresent
+    csiResizer:
+        repository: /sig-storage/csi-resizer
+        tag: v2.1.0
+        pullPolicy: IfNotPresent
+    csiSnapshotter:
+        repository: /sig-storage/csi-snapshotter
+        tag: v8.5.0
+        pullPolicy: IfNotPresent
+    livenessProbe:
+        repository: /sig-storage/livenessprobe
+        tag: v2.18.0
+        pullPolicy: IfNotPresent
+    nodeDriverRegistrar:
+        repository: /sig-storage/csi-node-driver-registrar
+        tag: v2.16.0
+        pullPolicy: IfNotPresent
+    externalSnapshotter:
+        repository: /sig-storage/snapshot-controller
+        tag: v8.5.0
+        pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true # When true, service accounts will be created for you. Set to false if you want to use your own.
+  controller: csi-ipfs-controller # Name of Service Account to be created or used
+  node: csi-ipfs-node # Name of Service Account to be created or used
+
+rbac:
+  create: true
+  name: ipfs
+  allowProvisionerSecretGet: false
+
+driver:
+  # Must match the driver name used by the CSI driver binary (--drivername)
+  name: ipfs.csi.ptrvsrg.github.io
+  mountPermissions: 0
+
+# IPFS Kubo HTTP API (multiaddr). Prefer Kubernetes DNS to a reachable peer, e.g. first StatefulSet pod:
+#   /dns4/<sts-name>-0.<headless-svc>.<namespace>.svc.cluster.local/tcp/5001
+# For host-local IPFS only: /ip4/127.0.0.1/tcp/5001
+ipfsApi: "/dns4/demo-ipfs-cluster-0.demo-ipfs-cluster.ipfs.svc.cluster.local/tcp/5001"
+ipfsMfsRoot: "/csi-volumes"
+
+feature:
+  enableFSGroupPolicy: true
+  enableInlineVolume: false
+  propagateHostMountOptions: false
+
+kubeletDir: /var/lib/kubelet
+
+# CSI sidecars use --http-endpoint=:PORT (all interfaces) so kubelet can probe via Pod IP (hostNetwork = node IP).
+# Do not set httpGet.host; livenessprobe does not listen until the driver socket exists — use startupProbe below.
+
+controller:
+  name: csi-ipfs-controller
+  replicas: 1
+  strategyType: Recreate
+  hostNetwork: false
+  runOnMaster: false
+  runOnControlPlane: false
+  enableSnapshotter: true
+  useTarCommandInSnapshot: false
+  enableSnapshotCompression: true
+  livenessProbe:
+    healthPort: 29652
+  startupProbe:
+    failureThreshold: 60
+    periodSeconds: 5
+    timeoutSeconds: 5
+  logLevel: "info"
+  workingMountDir: /tmp
+  dnsPolicy: ClusterFirst
+  affinity: {}
+  nodeSelector: {}
+  priorityClassName: ""
+  tolerations:
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/controlplane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "CriticalAddonsOnly"
+      operator: "Exists"
+      effect: "NoSchedule"
+  resources:
+    csiProvisioner:
+      limits:
+        memory: 400Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    csiResizer:
+      limits:
+        memory: 400Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    csiSnapshotter:
+      limits:
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    livenessProbe:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    ipfs:
+      limits:
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+
+nodeDriverRegistrar:
+  healthPort: 19809
+  startupProbe:
+    failureThreshold: 60
+    periodSeconds: 5
+    timeoutSeconds: 5
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 5
+    failureThreshold: 2
+
+node:
+  name: csi-ipfs-node
+  # If empty, the DaemonSet uses top-level `ipfsApi`. Override when node and controller must use different addresses.
+  ipfsApi: ""
+  dnsPolicy: ClusterFirstWithHostNet
+  maxUnavailable: 1
+  logLevel: "info"
+  livenessProbe:
+    healthPort: 29653
+  startupProbe:
+    failureThreshold: 60
+    periodSeconds: 5
+    timeoutSeconds: 5
+  affinity: {}
+  nodeSelector: {}
+  priorityClassName: ""
+  tolerations: []
+  resources:
+    livenessProbe:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    nodeDriverRegistrar:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    ipfs:
+      limits:
+        memory: 300Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+
+## Reference to one or more secrets to be used when pulling images
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+##
+imagePullSecrets: []
+# - name: "image-pull-secret"
+
+## StorageClass resource example:
+storageClass:
+  create: true
+
+## StorageClass resources for creating multiple storage classes:
+## If you want multiple storage classes with different configurations, use this instead of storageClass above
+storageClasses:
+  - name: ipfs-csi
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "true"
+    parameters: {}
+    reclaimPolicy: Delete
+    volumeBindingMode: Immediate
