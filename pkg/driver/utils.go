@@ -224,9 +224,9 @@ func getVolumeStats(path string) (*volumeStats, error) {
 		return nil, fmt.Errorf("statfs on path %s: %w", path, err)
 	}
 	return &volumeStats{
-		availableBytes:  int64(stat.Bavail) * int64(stat.Bsize),
-		totalBytes:      int64(stat.Blocks) * int64(stat.Bsize),
-		usedBytes:       (int64(stat.Blocks) - int64(stat.Bfree)) * int64(stat.Bsize),
+		availableBytes:  int64(stat.Bavail) * int64(stat.Bsize),                       //nolint:unconvert
+		totalBytes:      int64(stat.Blocks) * int64(stat.Bsize),                       //nolint:unconvert
+		usedBytes:       (int64(stat.Blocks) - int64(stat.Bfree)) * int64(stat.Bsize), //nolint:unconvert
 		availableInodes: int64(stat.Ffree),
 		totalInodes:     int64(stat.Files),
 		usedInodes:      int64(stat.Files) - int64(stat.Ffree),
