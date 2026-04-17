@@ -27,7 +27,7 @@ permissions:
 env:
   HELM_VERSION: v4.1.4
   KUBECTL_VERSION: v1.35.0
-  KIND_VERSION: 0.31.0
+  KIND_VERSION: v0.31.0
   GINKGO_VERSION: v2.28.1
   EXTERNAL_SNAPSHOTTER_VERSION: v8.5.0
 
@@ -57,9 +57,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Load CSI Driver image
+      - name: Verify CSI driver image exists on GHCR
         run: |
-          docker image pull ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}
+          set -euo pipefail
+          image='ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}'
+          if ! docker manifest inspect "$image" >/dev/null 2>&1; then
+            echo "::error title=E2E image missing::No manifest for ${image}. Run or wait for CI DEV (Go) docker-build-push for this PR merge SHA, then re-add the e2e label."
+            exit 1
+          fi
+          echo "OK: manifest present — ${image}"
 
   e2e:
     name: "E2E: kind + helm + ginkgo"
