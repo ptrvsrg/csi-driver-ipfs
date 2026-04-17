@@ -12,7 +12,7 @@
 | **Publish Pages**         | `docs-build` + `charts-build` -> `pages-assemble` -> `pages-deploy` |
 | **Release (Helm charts)** | `verify-version` -> `publish`                                       |
 | **Release (Golang)**      | `release`                                                           |
-| **E2E tests**             | `remove-label` + `check-image` + `e2e` (only when PR label is `e2e`)  |
+| **E2E tests**             | PR label `e2e/run` → `remove-label` → `check-image` → `e2e`; then `e2e/success` or `e2e/fail` |
 
 ## Workflow index
 
@@ -27,7 +27,7 @@
 | `release-golang.yml`  | tag `driver/v*` or manual                                | Build and publish binaries + image via GoReleaser                                         |
 | `release-chart.yml`   | tags `chart/csi-driver-ipfs/v*`, `chart/ipfs-cluster/v*` | Verify tag/version and publish chart release assets                                       |
 | `publish-pages.yml`   | push on `main` or manual                                 | Build docs and chart index, publish to GitHub Pages                                       |
-| `labeler.yml`         | PR opened/sync                                           | Auto-label PRs via `.github/labeler.yml`                                                  |
+| `labeler.yml`         | PR opened/sync                                           | Path-based labels (`actions/labeler`) + size labels (`CodelyTV/pr-size-labeler`)         |
 
 ## Path filters (`ci-dev-*.yml`)
 
