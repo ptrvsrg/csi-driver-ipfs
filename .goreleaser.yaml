@@ -16,8 +16,7 @@ version: 2
 
 project_name: csi-driver-ipfs
 
-# Git tags are `driver/v*`; binaries and OCI tags use semver without the `driver/` prefix.
-# .IsSnapshot keeps GoReleaser snapshot .Version; tagged releases use trimprefix on .Tag.
+# Git tags are driver/v*; CI sets GORELEASER_CURRENT_TAG=v… so semver and {{ .Version }} work.
 before:
   hooks:
     - go mod download
@@ -30,7 +29,7 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X main.driverVersion={{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}
+      - -X main.driverVersion={{.Version}}
       - -X main.gitCommit={{.ShortCommit}}
       - -X main.buildDate={{.Date}}
     goos:
@@ -53,7 +52,7 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
-    name_template: '{{ .ProjectName }}_{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
 
 checksum:
   name_template: "checksums.txt"
@@ -66,43 +65,43 @@ changelog:
 
 dockers:
   - image_templates:
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}-amd64'
+      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-amd64'
       - "ghcr.io/ptrvsrg/csi-driver-ipfs:latest-amd64"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
-      - '--build-arg=VERSION={{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}'
+      - '--build-arg=VERSION={{ .Version }}'
       - "--build-arg=GIT_COMMIT={{ .FullCommit }}"
       - "--build-arg=BUILD_DATE={{ .Date }}"
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title=csi-driver-ipfs"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - '--label=org.opencontainers.image.version={{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
     goos: linux
     goarch: amd64
   - image_templates:
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}-arm64'
+      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-arm64'
       - "ghcr.io/ptrvsrg/csi-driver-ipfs:latest-arm64"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
-      - '--build-arg=VERSION={{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}'
+      - '--build-arg=VERSION={{ .Version }}'
       - "--build-arg=GIT_COMMIT={{ .FullCommit }}"
       - "--build-arg=BUILD_DATE={{ .Date }}"
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title=csi-driver-ipfs"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - '--label=org.opencontainers.image.version={{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
     goos: linux
     goarch: arm64
 
 docker_manifests:
-  - name_template: 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}'
+  - name_template: 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}'
     image_templates:
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}-amd64'
-      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ trimprefix .Tag "driver/" }}{{ end }}-arm64'
+      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-amd64'
+      - 'ghcr.io/ptrvsrg/csi-driver-ipfs:{{ .Version }}-arm64'
   - name_template: "ghcr.io/ptrvsrg/csi-driver-ipfs:latest"
     image_templates:
       - "ghcr.io/ptrvsrg/csi-driver-ipfs:latest-amd64"

@@ -24,7 +24,7 @@
 | `ci-dev-docs.yml`     | `pull_request` (path-filtered)                         | Docusaurus build for `docs/**` changes                                                    |
 | `ci-dev-actions.yml`  | `pull_request` (path-filtered)                         | `actionlint` on `.github/workflows/**` (and `.github/Makefile` when workflows tooling changes) |
 | `e2e.yml`             | `pull_request` with `labeled` event                      | E2E in Kind using Ginkgo suites                                                           |
-| `release-golang.yml`  | tag `driver/v*` or manual                                | Build and publish binaries + image via GoReleaser                                         |
+| `release-golang.yml`  | semver tag `v*` (e.g. `v1.2.3`) or manual                | Build and publish binaries + image via GoReleaser                                         |
 | `release-chart.yml`   | tags `chart/csi-driver-ipfs/v*`, `chart/ipfs-cluster/v*` | Verify tag/version and publish chart release assets                                       |
 | `publish-pages.yml`   | push on `main` or manual                                 | Build docs and chart index, publish to GitHub Pages                                       |
 | `labeler.yml`         | PR opened/sync                                           | Path-based labels (`actions/labeler`) + size labels (`CodelyTV/pr-size-labeler`)         |
@@ -45,7 +45,7 @@ Each `ci-dev-*.yml` workflow lists `paths:` under `pull_request` so it runs only
 
 ## Tags
 
-- **Image / Go release:** push git tag `driver/v1.2.3` (or `driver/v1.2.3-rc.1`, …); published binaries and container tags use **`v1.2.3`** without the `driver/` prefix (see `.goreleaser.yaml`).
+- **Image / Go release:** push git tag **`v1.2.3`** (or `v1.2.3-rc.1`, …); binaries and container tags follow the same semver naming (see `.goreleaser.yaml`).
 - **Charts:** `chart/csi-driver-ipfs/v0.1.0` or `chart/ipfs-cluster/v0.1.0` — version must match `Chart.yaml`.
 
 ## GitHub Pages layout

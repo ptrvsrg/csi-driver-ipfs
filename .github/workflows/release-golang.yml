@@ -51,6 +51,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # OSS GoReleaser parses semver from the *current* tag; git tag stays driver/v*.
+      # https://goreleaser.com/cookbooks/set-a-custom-git-tag/
+      - name: Set GORELEASER_CURRENT_TAG (strip driver/ for semver)
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF_NAME}"
+          case "$ref" in
+            driver/v*)
+              echo "GORELEASER_CURRENT_TAG=${ref#driver/}" >> "$GITHUB_ENV"
+              echo "GoReleaser current tag (semver): ${ref#driver/}"
+              ;;
+            *)
+              echo "::error::Release workflow expected tag driver/v*, got: ${ref}" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:

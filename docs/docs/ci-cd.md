@@ -11,7 +11,7 @@ Dev PR workflows (`ci-dev-*.yml`) use `pull_request` with `paths` globs so they 
 - `ci-dev-markdown.yml`: markdownlint when `**/*.md` or markdownlint config changes.
 - `ci-dev-docs.yml`: Docusaurus `yarn run build` under `docs/` when `docs/**` changes.
 - `ci-dev-actions.yml`: `actionlint` via `make -C .github verify/actionlint` when `.github/workflows/**` or `.github/Makefile` changes.
-- `release-golang.yml`: image and binary release via GoReleaser; git tags are `driver/v*`, artifact and image versions are semver **without** the `driver/` prefix (e.g. tag `driver/v1.0.0` → `v1.0.0`).
+- `release-golang.yml`: image and binary release via GoReleaser; git tags are semver-style **`v*`** (e.g. `v1.0.0`, `v1.0.0-rc.1`) so OSS GoReleaser can parse them; artifacts and OCI tags use the same `v` + version form (see `.goreleaser.yaml`).
 - `release-chart.yml`: chart release flow for `chart/<name>/v<version>` tags.
 - `publish-pages.yml`: publishes Docusaurus and chart index to GitHub Pages.
 
@@ -26,7 +26,7 @@ This allows Artifact Hub registration with chart index URL while keeping docs on
 
 ## Release conventions
 
-- Git tags for releases use `driver/v*`; published `main.driverVersion` and OCI tags use the suffix only (e.g. `v1.0.0`).
+- Git tags for Go releases use **`v*`** (e.g. `v1.0.0`); published `main.driverVersion` and OCI tags align with that (e.g. `v1.0.0`).
 - Chart tags use:
   - `chart/csi-driver-ipfs/vX.Y.Z`
   - `chart/ipfs-cluster/vX.Y.Z`

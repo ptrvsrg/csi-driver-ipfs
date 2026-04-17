@@ -88,8 +88,15 @@ parse_tag_from_ref() {
   printf '%s|%s' "$chart" "$version"
 }
 
-require_yq() {
-  command -v yq >/dev/null 2>&1 || die "yq is required (https://github.com/mikefarah/yq)"
+chart_yaml_version() {
+  local chart_file="$1"
+  awk '
+    /^version:/ {
+      sub(/^version:[[:space:]]+/, "")
+      gsub(/^["'\'']|["'\'']$/, "")
+      print
+      exit
+    }' "$chart_file"
 }
 
 # Compare Chart.yaml .version to expected semver from the tag.
@@ -102,7 +109,8 @@ verify_chart_version() {
   chart_file="${repo_root}/charts/${chart}/Chart.yaml"
   [[ -f "$chart_file" ]] || die "Missing $chart_file"
 
-  actual="$(yq -r '.version' "$chart_file")"
+  actual="$(chart_yaml_version "$chart_file")"
+  [[ -n "$actual" ]] || die "Could not read version from ${chart_file}"
   if [[ "$actual" != "$expected_version" ]]; then
     die "Chart.yaml version (${actual}) does not match tag version (${expected_version}) for chart ${chart}. Bump charts/${chart}/Chart.yaml before tagging."
   fi
@@ -131,7 +139,6 @@ main() {
   chart="${parsed%%|*}"
   version="${parsed#*|}"
 
-  require_yq
   verify_chart_version "$repo_root" "$chart" "$version"
 }
 
