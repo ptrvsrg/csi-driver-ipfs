@@ -14,6 +14,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.11.1
 	github.com/timandy/routine v1.1.6
+	golang.org/x/sys v0.41.0
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 	k8s.io/api v0.30.0
@@ -119,7 +120,6 @@ require (
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
