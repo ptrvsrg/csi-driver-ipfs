@@ -1,0 +1,20 @@
+IPFS Cluster has been installed.
+
+1. Generate cluster secret and bootstrap keys (if not using existingSecret):
+   export CLUSTER_SECRET=$(od -vN 32 -An -tx1 /dev/urandom | tr -d ' \n')
+   # Install ipfs-key (e.g. go install github.com/whyrusleeping/ipfs-key@latest) then:
+   # export BOOTSTRAP_KEYS=$(ipfs-key)
+   # Use the peer ID and private key in values or create a Secret.
+
+2. Upgrade with your secret and bootstrap peer:
+   helm upgrade {{ .Release.Name }} . --set clusterSecret="$CLUSTER_SECRET" \
+     --set bootstrapPeerId="<PEER_ID>" --set bootstrapPeerPrivKey="<BASE64_PRIV_KEY>" \
+     -n {{ .Release.Namespace }}
+
+3. Check pods:
+   kubectl get pods -l "app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
+
+4. Cluster API (from within cluster): http://{{ include "ipfs-cluster.fullname" . }}-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.apiPort }}
+
+5. For CSI driver IPFS API endpoint, use the cluster API or a specific peer, e.g.:
+   /dns4/{{ include "ipfs-cluster.fullname" . }}-0.{{ include "ipfs-cluster.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/tcp/5001

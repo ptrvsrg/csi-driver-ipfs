@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: csi-ipfs-controller Deployment
+templates:
+  - csi-ipfs-controller.yaml
+release:
+  name: test-release
+  namespace: default
+tests:
+  - it: should render Deployment with controller name
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: csi-ipfs-controller
+      - equal:
+          path: spec.replicas
+          value: 1
