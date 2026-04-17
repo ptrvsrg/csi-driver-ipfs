@@ -54,7 +54,7 @@ jobs:
           yarn --cwd docs run build
 
       - name: Upload docs artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docs-build
           path: docs/build
@@ -82,7 +82,7 @@ jobs:
           helm repo index .charts-out/charts --url "${CHART_REPO_URL}"
 
       - name: Upload charts artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: charts-repo
           path: .charts-out/charts
