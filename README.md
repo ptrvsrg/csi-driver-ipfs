@@ -1,16 +1,12 @@
-# csi-driver-ipfs
+# IPFS CSI drover for Kubernetes
+
+[![CI DEV (Go/Docker)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-golang.yml/badge.svg)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-golang.yml)
+[![CI DEV (Helm charts)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-charts.yml/badge.svg)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-charts.yml)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/csi-driver-ipfs)](https://artifacthub.io/packages/search?repo=csi-driver-ipfs)
+
+## About
 
 CSI driver that provisions Kubernetes PersistentVolumes on top of IPFS.
-
-## What this repository contains
-
-- `cmd/csi-driver-ipfs`: driver entrypoint and server bootstrap.
-- `pkg/driver`: CSI Controller/Node/Identity implementations.
-- `pkg/ipfs`: Kubo API client used by the driver.
-- `charts/csi-driver-ipfs`: Helm chart for the CSI driver.
-- `charts/ipfs-cluster`: Helm chart for single-cluster IPFS deployment used by local/dev scenarios.
-- `test/e2e`: end-to-end suite (Ginkgo + KUTTL).
-- `docs`: Docusaurus documentation site source.
 
 ## Quick start (Helm)
 
@@ -26,6 +22,16 @@ helm upgrade --install csi-driver-ipfs charts/csi-driver-ipfs -n csi-ipfs --crea
 ```
 
 ## Development
+
+### What this repository contains
+
+- `cmd/csi-driver-ipfs`: driver entrypoint and server bootstrap.
+- `pkg/driver`: CSI Controller/Node/Identity implementations.
+- `pkg/ipfs`: Kubo API client used by the driver.
+- `charts/csi-driver-ipfs`: Helm chart for the CSI driver.
+- `charts/ipfs-cluster`: Helm chart for single-cluster IPFS deployment used by local/dev scenarios.
+- `test/e2e`: end-to-end suite (Ginkgo + KUTTL).
+- `docs`: Docusaurus documentation site source.
 
 ### Build and unit tests
 
@@ -63,12 +69,12 @@ Published docs are expected on GitHub Pages, and packaged charts/index on the sa
 
 When GitHub Pages publication is enabled for this repository:
 
-- Docs root: `https://<owner>.github.io/<repo>/`
-- Helm index: `https://<owner>.github.io/<repo>/charts/index.yaml`
+- Docs root: `https://ptrvsrg.github.io/csi-driver-ipfs/`
+- Helm index: `https://ptrvsrg.github.io/csi-driver-ipfs/charts/index.yaml`
 
 Use with Helm:
 
 ```bash
-helm repo add csi-driver-ipfs https://<owner>.github.io/<repo>/charts
+helm repo add csi-driver-ipfs https://ptrvsrg.github.io/csi-driver-ipfs/charts
 helm repo update
 ```
