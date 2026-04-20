@@ -8,7 +8,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/ipfs/boxo v0.38.0
 	github.com/ipfs/go-cid v0.6.0
-	github.com/ipfs/kubo v0.40.0
+	github.com/ipfs/kubo v0.40.1
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.4.0
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/rs/zerolog v1.34.0
