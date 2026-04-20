@@ -4,11 +4,13 @@ description: CSI driver for IPFS volumes in Kubernetes
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
-kubeVersion: ">=1.21.0-0"
+kubeVersion: ">=1.35"
+icon: https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Ipfs-logo-1024-ice-text.png/960px-Ipfs-logo-1024-ice-text.png
 keywords:
   - csi
   - storage
   - ipfs
+  - kubernetes
 home: https://github.com/ptrvsrg/csi-driver-ipfs
 sources:
   - https://github.com/ptrvsrg/csi-driver-ipfs
