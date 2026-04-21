@@ -28,6 +28,9 @@ SHELLCHECK_BIN ?= shellcheck
 SHELL_SCRIPTS := $(shell git ls-files '*.sh')
 DOCKER_SCAN_IMAGE_NAME ?= $(IMAGE_NAME)
 DOCKER_SCAN_IMAGE_TAG ?= $(subst /,-,$(VERSION))
+HELM_BIN ?= helm
+K8S_DEPLOY_APP_VERSION ?= $(shell awk '/^appVersion:/ { gsub(/"/, "", $$2); print $$2; exit }' charts/csi-driver-ipfs/Chart.yaml)
+K8S_DEPLOY_DIR ?= deploy/k8s/v$(K8S_DEPLOY_APP_VERSION)
 
 $(GOBIN):
 	mkdir -p $(GOBIN)
@@ -96,6 +99,14 @@ deps/shellcheck: ## Verify shellcheck is available in PATH.
 		exit 1; \
 	}
 
+.PHONY: deps/helm
+deps/helm: ## Verify helm is available in PATH.
+	@command -v "$(HELM_BIN)" >/dev/null 2>&1 || { \
+		echo "helm is required but was not found in PATH."; \
+		echo "Install it locally (for example: brew install helm)."; \
+		exit 1; \
+	}
+
 MOCKERY_VERSION ?= 2.53.6
 .PHONY: deps/mockery
 deps/mockery: ## Install mockery into $(GOBIN) if missing.
@@ -134,6 +145,15 @@ gen/license-header: ## Add copyright to source files.
 .PHONY: gen/mocks
 gen/mocks: deps/mockery ## Generate Go mocks using .mockery.yaml.
 	$(GOBIN)/mockery --config .mockery.yaml
+
+.PHONY: gen/k8s-manifests
+gen/k8s-manifests: deps/helm ## Render Helm charts into deploy/k8s/v<appVersion>.
+	@mkdir -p "$(K8S_DEPLOY_DIR)"
+	$(HELM_BIN) dependency update charts/csi-driver-ipfs
+	$(HELM_BIN) dependency update charts/ipfs-cluster
+	$(HELM_BIN) template csi-driver-ipfs charts/csi-driver-ipfs --namespace csi-ipfs > "$(K8S_DEPLOY_DIR)/csi-driver-ipfs.yaml"
+	$(HELM_BIN) template ipfs-cluster charts/ipfs-cluster --namespace ipfs > "$(K8S_DEPLOY_DIR)/ipfs-cluster.yaml"
+	@echo "Rendered manifests to $(K8S_DEPLOY_DIR)"
 
 ##@ Testing
 

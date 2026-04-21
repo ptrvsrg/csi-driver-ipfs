@@ -1,49 +1,30 @@
-# Copyright 2026 ptrvsrg.
-#
-# Licensed under the Apache License, Version 2.0 (the License);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ipfs
 ---
 # Source: ipfs-cluster/templates/secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: demo-ipfs-cluster-secret
+  name: ipfs-cluster-secret
   namespace: ipfs
   labels:
-    helm.sh/chart: ipfs-cluster-0.1.0
+    helm.sh/chart: ipfs-cluster-0.1.1
     app.kubernetes.io/name: ipfs-cluster
-    app.kubernetes.io/instance: demo
+    app.kubernetes.io/instance: ipfs-cluster
     app.kubernetes.io/version: "1.0.0"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 data:
-  cluster-secret: "UkVQTEFDRV9NRQ=="
+  cluster-secret: "YWY0YTk0ZWJmODdiNGYxMGE3NTYzYTRhMTcwZTU0YmJhZjQwZDJhYzMzOGY1MjhkY2Y4MjIyZDRjMGU2YzdiZg=="
 ---
 # Source: ipfs-cluster/templates/configmap-scripts.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: demo-ipfs-cluster-scripts
+  name: ipfs-cluster-scripts
   namespace: ipfs
   labels:
-    helm.sh/chart: ipfs-cluster-0.1.0
+    helm.sh/chart: ipfs-cluster-0.1.1
     app.kubernetes.io/name: ipfs-cluster
-    app.kubernetes.io/instance: demo
+    app.kubernetes.io/instance: ipfs-cluster
     app.kubernetes.io/version: "1.0.0"
     app.kubernetes.io/managed-by: Helm
 data:
@@ -63,7 +44,7 @@ data:
         exec ipfs-cluster-service daemon --upgrade
       fi
     else
-      BOOTSTRAP_ADDR="/dns4/demo-ipfs-cluster-0.demo-ipfs-cluster.ipfs.svc.cluster.local/tcp/9096/ipfs/${BOOTSTRAP_PEER_ID}"
+      BOOTSTRAP_ADDR="/dns4/ipfs-cluster-0.ipfs-cluster.ipfs.svc.cluster.local/tcp/9096/ipfs/${BOOTSTRAP_PEER_ID}"
       exec ipfs-cluster-service daemon --upgrade --bootstrap "$BOOTSTRAP_ADDR" --leave
     fi
   bootstrap-peer-id: ""
@@ -91,12 +72,12 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-ipfs-cluster
+  name: ipfs-cluster
   namespace: ipfs
   labels:
-    helm.sh/chart: ipfs-cluster-0.1.0
+    helm.sh/chart: ipfs-cluster-0.1.1
     app.kubernetes.io/name: ipfs-cluster
-    app.kubernetes.io/instance: demo
+    app.kubernetes.io/instance: ipfs-cluster
     app.kubernetes.io/version: "1.0.0"
     app.kubernetes.io/managed-by: Helm
 spec:
@@ -129,19 +110,19 @@ spec:
       protocol: TCP
   selector:
     app.kubernetes.io/name: ipfs-cluster
-    app.kubernetes.io/instance: demo
+    app.kubernetes.io/instance: ipfs-cluster
 ---
 # Source: ipfs-cluster/templates/service.yaml
 # Optional: ClusterIP service for API access (e.g. from CSI driver or clients)
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-ipfs-cluster-api
+  name: ipfs-cluster-api
   namespace: ipfs
   labels:
-    helm.sh/chart: ipfs-cluster-0.1.0
+    helm.sh/chart: ipfs-cluster-0.1.1
     app.kubernetes.io/name: ipfs-cluster
-    app.kubernetes.io/instance: demo
+    app.kubernetes.io/instance: ipfs-cluster
     app.kubernetes.io/version: "1.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: api
@@ -158,52 +139,69 @@ spec:
       protocol: TCP
   selector:
     app.kubernetes.io/name: ipfs-cluster
-    app.kubernetes.io/instance: demo
+    app.kubernetes.io/instance: ipfs-cluster
 ---
 # Source: ipfs-cluster/templates/statefulset.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: demo-ipfs-cluster
+  name: ipfs-cluster
   namespace: ipfs
   labels:
-    helm.sh/chart: ipfs-cluster-0.1.0
+    helm.sh/chart: ipfs-cluster-0.1.1
     app.kubernetes.io/name: ipfs-cluster
-    app.kubernetes.io/instance: demo
+    app.kubernetes.io/instance: ipfs-cluster
     app.kubernetes.io/version: "1.0.0"
     app.kubernetes.io/managed-by: Helm
 spec:
-  serviceName: demo-ipfs-cluster
-  replicas: 1
+  serviceName: ipfs-cluster
+  replicas: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: ipfs-cluster
-      app.kubernetes.io/instance: demo
+      app.kubernetes.io/instance: ipfs-cluster
   podManagementPolicy: Parallel
   template:
     metadata:
       labels:
-        helm.sh/chart: ipfs-cluster-0.1.0
+        helm.sh/chart: ipfs-cluster-0.1.1
         app.kubernetes.io/name: ipfs-cluster
-        app.kubernetes.io/instance: demo
+        app.kubernetes.io/instance: ipfs-cluster
         app.kubernetes.io/version: "1.0.0"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: cluster
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: configure-ipfs
           image: "ipfs/kubo:v0.39.0"
           imagePullPolicy: IfNotPresent
           command: ["sh", "/scripts/configure-ipfs.sh"]
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: ipfs-storage
               mountPath: /data/ipfs
             - name: scripts
               mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: ipfs
           image: "ipfs/kubo:v0.39.0"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: IPFS_FD_MAX
               value: "4096"
@@ -232,31 +230,39 @@ spec:
           volumeMounts:
             - name: ipfs-storage
               mountPath: /data/ipfs
+            - name: tmp
+              mountPath: /tmp
           resources:
             {}
         - name: ipfs-cluster
           image: "ipfs/ipfs-cluster:v1.1.5"
           imagePullPolicy: IfNotPresent
           command: ["sh", "/scripts/entrypoint.sh"]
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: BOOTSTRAP_PEER_ID
               valueFrom:
                 configMapKeyRef:
-                  name: demo-ipfs-cluster-scripts
+                  name: ipfs-cluster-scripts
                   key: bootstrap-peer-id
             - name: BOOTSTRAP_PEER_PRIV_KEY
               valueFrom:
                 secretKeyRef:
-                  name: demo-ipfs-cluster-secret
+                  name: ipfs-cluster-secret
                   key: bootstrap-peer-priv-key
                   optional: true
             - name: CLUSTER_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: demo-ipfs-cluster-secret
+                  name: ipfs-cluster-secret
                   key: cluster-secret
             - name: CLUSTER_SVC_NAME
-              value: demo-ipfs-cluster
+              value: ipfs-cluster
           ports:
             - name: api-http
               containerPort: 9094
@@ -278,13 +284,17 @@ spec:
               mountPath: /data/ipfs-cluster
             - name: scripts
               mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
           resources:
             {}
       volumes:
         - name: scripts
           configMap:
-            name: demo-ipfs-cluster-scripts
+            name: ipfs-cluster-scripts
             defaultMode: 0755
+        - name: tmp
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: cluster-storage
