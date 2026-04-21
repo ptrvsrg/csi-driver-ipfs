@@ -81,5 +81,11 @@ RUN set -euo pipefail \
 
 COPY --from=builder /bin/csi-driver-ipfs /bin/csi-driver-ipfs
 
-# Run as root (required for mount/umount in CSI node plugin)
+# Define a non-root image user by default; Kubernetes manifests override to
+# root for CSI driver workloads that need mount/umount privileges.
+RUN addgroup -S -g 65532 csiipfs \
+    && adduser -S -D -H -u 65532 -G csiipfs -s /sbin/nologin csiipfs
+
+USER 65532:65532
+
 ENTRYPOINT ["/bin/csi-driver-ipfs"]

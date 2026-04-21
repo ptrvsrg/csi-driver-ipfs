@@ -122,6 +122,7 @@ spec:
           imagePullPolicy: {{ .Values.image.driver.pullPolicy }}
           securityContext:
             privileged: true
+            runAsUser: 0
             readOnlyRootFilesystem: true
             capabilities:
               add:
