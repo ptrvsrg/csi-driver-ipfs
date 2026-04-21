@@ -33,7 +33,15 @@ vulnerabilities:
     paths:
       - usr/local/bin/ipfs
     statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
+  - id: CVE-2026-32281
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
   - id: CVE-2026-32282
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
+  - id: CVE-2026-32283
     paths:
       - usr/local/bin/ipfs
     statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
