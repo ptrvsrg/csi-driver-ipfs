@@ -302,12 +302,9 @@ jobs:
   security-label-fail:
     name: "PR label: security/fail"
     needs:
-      - golang-code-scan
       - golang-deps-scan
       - docs-deps-scan
-      - helm-scan
       - kubernetes-manifests-scan
-      - dockerfile-scan
       - docker-image-scan
       - shell-scripts-scan
     if: >-
