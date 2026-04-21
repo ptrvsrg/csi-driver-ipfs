@@ -24,7 +24,7 @@
 make test/unit
 make -C charts test/all
 make -C test/e2e test/e2e
-make -C docs build
+make -C docs dev/build
 ```
 
 ## IPFS logo (documentation)

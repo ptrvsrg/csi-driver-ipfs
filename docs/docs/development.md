@@ -42,7 +42,7 @@ Mocks are generated from `.mockery.yaml` into package-specific `mocks` directori
 ## Local docs
 
 ```bash
-make -C docs start
+make -C docs dev/start
 ```
 
 ## Recommended change flow

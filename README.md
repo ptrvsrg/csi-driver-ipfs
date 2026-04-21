@@ -60,7 +60,7 @@ make -C test/e2e env/down
 Local docs preview:
 
 ```bash
-make -C docs start
+make -C docs dev/start
 ```
 
 Published docs are expected on GitHub Pages, and packaged charts/index on the same domain under `/charts`.

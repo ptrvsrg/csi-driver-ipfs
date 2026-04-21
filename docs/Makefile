@@ -40,17 +40,6 @@ dev/start: deps/install ## Run local Docusaurus dev server.
 dev/build: deps/install ## Build static docs site to docs/build.
 	yarn run build
 
-##@ Backwards Compatibility
-
-.PHONY: install
-install: deps/install ## Alias for deps/install (backwards compatibility).
-
-.PHONY: start
-start: dev/start ## Alias for dev/start (backwards compatibility).
-
-.PHONY: build
-build: dev/build ## Alias for dev/build (backwards compatibility).
-
 ##@ Security
 
 .PHONY: security/audit

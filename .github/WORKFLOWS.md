@@ -2,32 +2,34 @@
 
 ## Job dependency graph (high level)
 
-| Workflow                  | Job order                                                           |
-|---------------------------|---------------------------------------------------------------------|
-| **CI DEV (Go/Docker)**    | (`mod-verify` ∥ `go-fmt` ∥ `go-vet` ∥ `check-license` ∥ `goreleaser-check`) → (`lint` ∥ `unit`) → `build` → `docker-build-push` |
-| **CI DEV (Helm charts)**  | `chart-version` -> `lint` -> `test` -> `package`                    |
-| **CI DEV (markdown)**     | `lint`                                                              |
-| **CI DEV (docs site)**    | `build` (Docusaurus)                                                |
-| **CI DEV (GitHub Actions)** | `actionlint`                                                      |
-| **Publish Pages**         | `docs-build` + `charts-build` -> `pages-assemble` -> `pages-deploy` |
-| **Release (Helm charts)** | `verify-version` -> `publish`                                       |
-| **Release (Golang)**      | `release`                                                           |
-| **E2E tests**             | PR label `e2e/run` → `remove-label` → `check-image` → `e2e`; then `e2e/success` or `e2e/fail` |
+| Workflow                    | Job order                                                                                                                        |
+|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| **CI DEV (Go/Docker)**      | (`mod-verify` ∥ `go-fmt` ∥ `go-vet` ∥ `check-license` ∥ `goreleaser-check`) → (`lint` ∥ `unit`) → `build` → `docker-build-push`  |
+| **CI DEV (Helm charts)**    | `chart-version` -> `lint` -> `test` -> `package`                                                                                 |
+| **CI DEV (markdown)**       | `lint`                                                                                                                           |
+| **CI DEV (docs site)**      | `build` (Docusaurus)                                                                                                             |
+| **CI DEV (GitHub Actions)** | `actionlint`                                                                                                                     |
+| **Publish Pages**           | `docs-build` + `charts-build` -> `pages-assemble` -> `pages-deploy`                                                              |
+| **Release (Helm charts)**   | `verify-version` -> `publish`                                                                                                    |
+| **Release (Golang)**        | `release`                                                                                                                        |
+| **E2E tests**               | PR label `e2e/run` → `remove-label` → `check-image` → `e2e`; then `e2e/success` or `e2e/fail`                                    |
+| **Security scans**          | PR label `security/run` → `remove-label` → scan jobs → `security/success` or `security/fail`                                     |
 
 ## Workflow index
 
-| File                  | Trigger                                                  | Purpose                                                                                   |
-|-----------------------|----------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| `ci-dev-golang.yml`   | `pull_request` (path-filtered)                         | Go checks, `goreleaser check`, golangci-lint, tests, dev image to ghcr (same-repo PRs)   |
-| `ci-dev-charts.yml`   | `pull_request` (path-filtered)                         | Helm lint, helm-unittest, chart packaging artifacts                                       |
-| `ci-dev-markdown.yml` | `pull_request` (path-filtered)                         | Markdown lint when matching `**/*.md` or markdownlint config                              |
-| `ci-dev-docs.yml`     | `pull_request` (path-filtered)                         | Docusaurus build for `docs/**` changes                                                    |
-| `ci-dev-actions.yml`  | `pull_request` (path-filtered)                         | `actionlint` on `.github/workflows/**` (and `.github/Makefile` when workflows tooling changes) |
-| `e2e.yml`             | `pull_request` with `labeled` event                      | E2E in Kind using Ginkgo suites                                                           |
-| `release-golang.yml`  | semver tag `v*` (e.g. `v1.2.3`) or manual                | Build and publish binaries + image via GoReleaser                                         |
-| `release-chart.yml`   | tags `chart/csi-driver-ipfs/v*`, `chart/ipfs-cluster/v*` | Verify tag/version and publish chart release assets                                       |
-| `publish-pages.yml`   | push on `main` or manual                                 | Build docs and chart index, publish to GitHub Pages                                       |
-| `labeler.yml`         | PR opened/sync                                           | Path-based labels (`actions/labeler`) + size labels (`CodelyTV/pr-size-labeler`)         |
+| File                  | Trigger                                                  | Purpose                                                                                        |
+|-----------------------|----------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| `ci-dev-golang.yml`   | `pull_request` (path-filtered)                           | Go checks, `goreleaser check`, golangci-lint, tests, dev image to ghcr (same-repo PRs)         |
+| `ci-dev-charts.yml`   | `pull_request` (path-filtered)                           | Helm lint, helm-unittest, chart packaging artifacts                                            |
+| `ci-dev-markdown.yml` | `pull_request` (path-filtered)                           | Markdown lint when matching `**/*.md` or markdownlint config                                   |
+| `ci-dev-docs.yml`     | `pull_request` (path-filtered)                           | Docusaurus build for `docs/**` changes                                                         |
+| `ci-dev-actions.yml`  | `pull_request` (path-filtered)                           | `actionlint` on `.github/workflows/**` (and `.github/Makefile` when workflows tooling changes) |
+| `e2e.yml`             | `pull_request` with `labeled` event                      | E2E in Kind using Ginkgo suites                                                                |
+| `release-golang.yml`  | semver tag `v*` (e.g. `v1.2.3`) or manual                | Build and publish binaries + image via GoReleaser                                              |
+| `release-chart.yml`   | tags `chart/csi-driver-ipfs/v*`, `chart/ipfs-cluster/v*` | Verify tag/version and publish chart release assets                                            |
+| `publish-pages.yml`   | push on `main` or manual                                 | Build docs and chart index, publish to GitHub Pages                                            |
+| `labeler.yml`         | PR opened/sync                                           | Path-based labels (`actions/labeler`) + size labels (`CodelyTV/pr-size-labeler`)               |
+| `security.yml`        | `push` on `main`/tags, `pull_request`                    | Security scans (Trivy, CodeQL, Semgrep, Checkov, ZAP, Polaris)                                 |
 
 ## Path filters (`ci-dev-*.yml`)
 
