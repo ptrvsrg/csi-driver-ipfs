@@ -1,0 +1,338 @@
+# Copyright 2026 ptrvsrg.
+#
+# Licensed under the Apache License, Version 2.0 (the License);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Security scans
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - labeled
+      - unlabeled
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  NODE_VERSION: "24.14.0"
+  HELM_VERSION: v4.1.4
+  TRIVY_SEVERITY: HIGH,CRITICAL
+  TRIVY_VERSION: v0.69.3
+
+jobs:
+  remove-label:
+    name: "Remove security label"
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'security/run' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove security/run label
+        uses: mondeja/remove-labels-gh-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: security/run
+
+  golang-code-scan:
+    name: golang-code-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    runs-on: ubuntu-latest
+    needs:
+      - remove-label
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Go mod download
+        run: go mod download
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Run gosec
+        run: gosec -exclude-generated ./...
+
+  golang-deps-scan:
+    name: golang-deps-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    needs:
+      - golang-code-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Run Trivy on Go dependencies
+        run: trivy fs --quiet --scanners vuln --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 --skip-dirs docs .
+
+  docs-deps-scan:
+    name: docs-deps-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    needs:
+      - remove-label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Run Trivy on docs dependencies
+        run: trivy fs --quiet --scanners vuln --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 docs
+
+  helm-scan:
+    name: helm-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    runs-on: ubuntu-latest
+    needs:
+      - remove-label
+    strategy:
+      matrix:
+        chart:
+          - "ipfs-cluster"
+          - "csi-driver-ipfs"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Run Trivy on Helm charts - ${{ matrix.chart }}
+        run: trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 --ignorefile "charts/${{ matrix.chart }}/.trivyignore" "charts/${{ matrix.chart }}"
+
+  kubernetes-manifests-scan:
+    name: kubernetes-manifests-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    needs:
+      - helm-scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart:
+          - "ipfs-cluster"
+          - "csi-driver-ipfs"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Run Trivy on rendered Kubernetes manifests - ${{ matrix.chart }}
+        run: |
+          set -euo pipefail
+          mkdir -p charts/dist
+          helm dependency update "charts/${{ matrix.chart }}"
+          helm template "${{ matrix.chart }}" "charts/${{ matrix.chart }}" > "charts/dist/${{ matrix.chart }}-rendered.yaml"
+          trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 --ignorefile "charts/${{ matrix.chart }}/.trivyignore" "charts/dist/${{ matrix.chart }}-rendered.yaml"
+
+  dockerfile-scan:
+    name: dockerfile-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    runs-on: ubuntu-latest
+    needs:
+      - remove-label
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Run Trivy on Dockerfile
+        run: trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 Dockerfile
+
+  docker-image-scan:
+    name: docker-image-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    needs:
+      - dockerfile-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Build and scan Docker image
+        run: |
+          set -euo pipefail
+          IMAGE_NAME="csi-driver-ipfs-security"
+          IMAGE_TAG="security-${{ github.sha }}"
+          BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          docker build \
+            --build-arg VERSION="${IMAGE_TAG}" \
+            --build-arg GIT_COMMIT="${{ github.sha }}" \
+            --build-arg BUILD_DATE="${BUILD_DATE}" \
+            --network=host \
+            -t "${IMAGE_NAME}:${IMAGE_TAG}" \
+            -t "${IMAGE_NAME}:latest" \
+            .
+          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "${IMAGE_NAME}:${IMAGE_TAG}"
+
+  shell-scripts-scan:
+    name: shell-scripts-scan
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    runs-on: ubuntu-latest
+    needs:
+      - remove-label
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck
+        run: |
+          set -euo pipefail
+          mapfile -t shell_scripts < <(git ls-files '*.sh')
+          if [ "${#shell_scripts[@]}" -eq 0 ]; then
+            echo "No tracked shell scripts found."
+            exit 0
+          fi
+          shellcheck -x "${shell_scripts[@]}"
+
+  security-label-success:
+    name: "PR label: security/success"
+    needs:
+      - golang-deps-scan
+      - docs-deps-scan
+      - kubernetes-manifests-scan
+      - docker-image-scan
+      - shell-scripts-scan
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'security/run' &&
+      success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply security/success (remove security/fail)
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('No pull_request in event payload');
+              return;
+            }
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: pr, name: 'security/fail',
+              });
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: pr, labels: ['security/success'],
+            });
+
+  security-label-fail:
+    name: "PR label: security/fail"
+    needs:
+      - golang-deps-scan
+      - docs-deps-scan
+      - kubernetes-manifests-scan
+      - docker-image-scan
+      - shell-scripts-scan
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'security/run' &&
+      always() &&
+      (failure() || cancelled())
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply security/fail (remove security/success)
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('No pull_request in event payload');
+              return;
+            }
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: pr, name: 'security/success',
+              });
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: pr, labels: ['security/fail'],
+            });

@@ -3,7 +3,7 @@ replicas: 3
 
 # Cluster secret (raw string, will be base64-encoded). Generate with: od -vN 32 -An -tx1 /dev/urandom | tr -d ' \n'
 # Leave empty in git and provide via --set or existingSecret in real deployments.
-clusterSecret: ""
+clusterSecret: "af4a94ebf87b4f10a7563a4a170e54bbaf40d2ac338f528dcf8222d4c0e6c7bf"
 
 # Existing secret containing keys: cluster-secret, bootstrap-peer-priv-key (optional for non-bootstrap peers)
 # If set, clusterSecret is ignored.

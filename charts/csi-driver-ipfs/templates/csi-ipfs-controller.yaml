@@ -109,6 +109,7 @@ spec:
               mountPath: /csi
           resources: {{- toYaml .Values.controller.resources.csiResizer | nindent 12 }}
           securityContext:
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
               - ALL
@@ -135,6 +136,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
           securityContext:
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
               - ALL
@@ -165,6 +167,8 @@ spec:
           imagePullPolicy: {{ .Values.image.driver.pullPolicy }}
           securityContext:
             privileged: false
+            runAsUser: 0
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
               - ALL
@@ -203,7 +207,11 @@ spec:
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
+            - mountPath: {{ .Values.controller.workingMountDir }}
+              name: working-dir
           resources: {{- toYaml .Values.controller.resources.ipfs | nindent 12 }}
       volumes:
         - name: socket-dir
+          emptyDir: {}
+        - name: working-dir
           emptyDir: {}

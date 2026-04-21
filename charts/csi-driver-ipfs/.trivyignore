@@ -1,0 +1,8 @@
+# KSV-0005: SYS_ADMIN is required for mount/umount operations performed by the node plugin.
+KSV-0005
+
+# KSV-0009: hostNetwork keeps the node plugin and health endpoints reachable without CNI.
+KSV-0009
+
+# KSV-0017: privileged mode is required for the host mount namespace interactions of the CSI node plugin.
+KSV-0017

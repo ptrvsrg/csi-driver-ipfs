@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GOLANG_VERSION=1.26.0
+ARG GOLANG_VERSION=1.26.2
 ARG ALPINE_VERSION=3.23
+ARG KUBO_VERSION=0.40.1
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
@@ -44,6 +45,8 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 \
     -o /bin/csi-driver-ipfs \
     ./cmd/csi-driver-ipfs/
 
+FROM ipfs/kubo:v${KUBO_VERSION} AS kubo
+
 # Runtime stage
 FROM alpine:${ALPINE_VERSION} AS runtime
 
@@ -68,18 +71,14 @@ RUN echo "http://mirror.yandex.ru/mirrors/alpine/v3.23/main" > /etc/apk/reposito
         make \
         xfsprogs
 
-# IPFS CLI (Kubo)
-ARG KUBO_VERSION=0.40.1
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
-
-RUN set -euo pipefail \
-    && curl -fsSLo "/tmp/kubo.tar.gz" "https://github.com/ipfs/kubo/releases/download/v${KUBO_VERSION}/kubo_v${KUBO_VERSION}_${TARGETOS}-${TARGETARCH}.tar.gz" \
-    && tar xzf "/tmp/kubo.tar.gz" -C /tmp \
-    && mv /tmp/kubo/ipfs /usr/local/bin/ipfs \
-    && rm -rf /tmp/kubo "/tmp/kubo.tar.gz"
-
+COPY --from=kubo /usr/local/bin/ipfs /usr/local/bin/ipfs
 COPY --from=builder /bin/csi-driver-ipfs /bin/csi-driver-ipfs
 
-# Run as root (required for mount/umount in CSI node plugin)
+# Define a non-root image user by default; Kubernetes manifests override to
+# root for CSI driver workloads that need mount/umount privileges.
+RUN addgroup -S -g 65532 csiipfs \
+    && adduser -S -D -H -u 65532 -G csiipfs -s /sbin/nologin csiipfs
+
+USER 65532:65532
+
 ENTRYPOINT ["/bin/csi-driver-ipfs"]

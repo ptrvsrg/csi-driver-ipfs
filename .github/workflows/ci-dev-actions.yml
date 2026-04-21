@@ -34,6 +34,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  ACTIONLINT_VERSION: v1.7.7
+
 jobs:
   actionlint:
     name: 'Actions: actionlint'
@@ -52,5 +55,8 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@${{ env.ACTIONLINT_VERSION }}
+
       - name: Run actionlint
-        run: make -C .github verify/actionlint
+        run: actionlint -color .github/workflows/*.yml

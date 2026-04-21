@@ -27,6 +27,6 @@ General (see [CONTRIBUTING.md](../CONTRIBUTING.md) for details):
 Scope-specific (run what applies to your change):
 
 - [ ] **Helm (`charts/**`):** bump `version` in each affected chart’s `Chart.yaml`; `make -C charts lint/all` and `make -C charts test/all` pass.
-- [ ] **Docs site (`docs/**`):** `make -C docs build` succeeds after `yarn install` (see [docs/README.md](../docs/README.md)).
+- [ ] **Docs site (`docs/**`):** `make -C docs dev/build` succeeds after `yarn install` (see [docs/README.md](../docs/README.md)).
 - [ ] **GitHub Actions (`.github/workflows/**` or `.github/Makefile`):** `make -C .github verify/actionlint` passes.
 - [ ] **GoReleaser (`.goreleaser.yaml`):** `goreleaser check` passes (install via `go install github.com/goreleaser/goreleaser/v2@<version>` or use the version pinned in `ci-dev-golang.yml`).

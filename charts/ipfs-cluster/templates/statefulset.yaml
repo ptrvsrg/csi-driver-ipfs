@@ -19,6 +19,9 @@ spec:
         {{- include "ipfs-cluster.labels" . | nindent 8 }}
         app.kubernetes.io/component: cluster
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -36,15 +39,29 @@ spec:
           image: "{{ .Values.image.ipfs.repository }}:{{ .Values.image.ipfs.tag }}"
           imagePullPolicy: {{ .Values.image.ipfs.pullPolicy }}
           command: ["sh", "/scripts/configure-ipfs.sh"]
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: ipfs-storage
               mountPath: /data/ipfs
             - name: scripts
               mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: ipfs
           image: "{{ .Values.image.ipfs.repository }}:{{ .Values.image.ipfs.tag }}"
           imagePullPolicy: {{ .Values.image.ipfs.pullPolicy }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: IPFS_FD_MAX
               value: "4096"
@@ -73,12 +90,20 @@ spec:
           volumeMounts:
             - name: ipfs-storage
               mountPath: /data/ipfs
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml .Values.resources.ipfs | nindent 12 }}
         - name: ipfs-cluster
           image: "{{ .Values.image.cluster.repository }}:{{ .Values.image.cluster.tag }}"
           imagePullPolicy: {{ .Values.image.cluster.pullPolicy }}
           command: ["sh", "/scripts/entrypoint.sh"]
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: BOOTSTRAP_PEER_ID
               valueFrom:
@@ -119,6 +144,8 @@ spec:
               mountPath: /data/ipfs-cluster
             - name: scripts
               mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml .Values.resources.cluster | nindent 12 }}
       volumes:
@@ -126,6 +153,8 @@ spec:
           configMap:
             name: {{ include "ipfs-cluster.scriptsConfigMapName" . }}
             defaultMode: 0755
+        - name: tmp
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: cluster-storage

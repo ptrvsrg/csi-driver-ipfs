@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"path"
 	"regexp"
 	"strings"
@@ -223,12 +224,43 @@ func getVolumeStats(path string) (*volumeStats, error) {
 	if err := syscall.Statfs(path, &stat); err != nil {
 		return nil, fmt.Errorf("statfs on path %s: %w", path, err)
 	}
+
+	// #nosec G115 -- statfs block size is expected to be non-negative
+	blockSize := uint64(stat.Bsize)
+	usedBlocks := subtractUint64Saturating(stat.Blocks, stat.Bfree)
+
 	return &volumeStats{
-		availableBytes:  int64(stat.Bavail) * int64(stat.Bsize),                       //nolint:unconvert
-		totalBytes:      int64(stat.Blocks) * int64(stat.Bsize),                       //nolint:unconvert
-		usedBytes:       (int64(stat.Blocks) - int64(stat.Bfree)) * int64(stat.Bsize), //nolint:unconvert
-		availableInodes: int64(stat.Ffree),
-		totalInodes:     int64(stat.Files),
-		usedInodes:      int64(stat.Files) - int64(stat.Ffree),
+		availableBytes:  multiplyUint64ToInt64(stat.Bavail, blockSize),
+		totalBytes:      multiplyUint64ToInt64(stat.Blocks, blockSize),
+		usedBytes:       multiplyUint64ToInt64(usedBlocks, blockSize),
+		availableInodes: uint64ToInt64Saturating(stat.Ffree),
+		totalInodes:     uint64ToInt64Saturating(stat.Files),
+		usedInodes:      uint64ToInt64Saturating(subtractUint64Saturating(stat.Files, stat.Ffree)),
 	}, nil
+}
+
+func subtractUint64Saturating(a, b uint64) uint64 {
+	if b >= a {
+		return 0
+	}
+	return a - b
+}
+
+func uint64ToInt64Saturating(v uint64) int64 {
+	if v > math.MaxInt64 {
+		return math.MaxInt64
+	}
+	// #nosec G115 -- bounded above by math.MaxInt64 just above
+	return int64(v)
+}
+
+func multiplyUint64ToInt64(a, b uint64) int64 {
+	if a == 0 || b == 0 {
+		return 0
+	}
+	if a > math.MaxInt64/b {
+		return math.MaxInt64
+	}
+	// #nosec G115 -- product is bounded above by math.MaxInt64 just above
+	return int64(a * b)
 }
