@@ -1,0 +1,25 @@
+vulnerabilities:
+  - id: CVE-2026-34986
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
+  - id: CVE-2026-39883
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
+  - id: CVE-2026-33186
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
+  - id: CVE-2026-25679
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
+  - id: CVE-2026-32280
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.
+  - id: CVE-2026-32282
+    paths:
+      - usr/local/bin/ipfs
+    statement: Ignore vulnerable Kubo embedded dependency until a fixed Kubo release is available.

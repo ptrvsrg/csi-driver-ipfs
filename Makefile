@@ -15,7 +15,8 @@
 PROJECT_NAME := csi-driver-ipfs
 REGISTRY ?= ghcr.io/ptrvsrg
 IMAGE_NAME := $(REGISTRY)/$(PROJECT_NAME)
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION_RAW ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+VERSION ?= $(patsubst driver/%,%,$(VERSION_RAW))
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -24,12 +25,13 @@ GO_BIN ?= $(shell pwd)/bin
 YARN_BIN ?= $(shell pwd)/bin
 TRIVY_BIN := $(GO_BIN)/trivy
 TRIVY_SEVERITY ?= HIGH,CRITICAL
+TRIVY_IMAGE_IGNORE_FILE ?= .trivyignore.image.yaml
 SHELLCHECK_BIN ?= shellcheck
 SHELL_SCRIPTS := $(shell git ls-files '*.sh')
 DOCKER_SCAN_IMAGE_NAME ?= $(IMAGE_NAME)
 DOCKER_SCAN_IMAGE_TAG ?= $(subst /,-,$(VERSION))
 HELM_BIN ?= helm
-K8S_DEPLOY_APP_VERSION ?= $(shell awk '/^appVersion:/ { gsub(/"/, "", $$2); print $$2; exit }' charts/csi-driver-ipfs/Chart.yaml)
+K8S_DEPLOY_APP_VERSION ?= $(shell sed -n 's/^appVersion: "\(.*\)"/\1/p' charts/csi-driver-ipfs/Chart.yaml | sed -n '1p')
 K8S_DEPLOY_DIR ?= deploy/k8s/v$(K8S_DEPLOY_APP_VERSION)
 
 $(GOBIN):
@@ -273,7 +275,7 @@ security/dockerfile-scan: deps/trivy ## Run Trivy config checks against the Dock
 .PHONY: security/docker-image-scan
 security/docker-image-scan: deps/trivy ## Build and scan the local Docker image with Trivy.
 	$(MAKE) build/docker IMAGE_NAME=$(DOCKER_SCAN_IMAGE_NAME) VERSION=$(DOCKER_SCAN_IMAGE_TAG)
-	$(TRIVY_BIN) image --quiet --severity $(TRIVY_SEVERITY) --exit-code 1 $(DOCKER_SCAN_IMAGE_NAME):$(DOCKER_SCAN_IMAGE_TAG)
+	$(TRIVY_BIN) image --quiet --severity $(TRIVY_SEVERITY) --ignorefile $(TRIVY_IMAGE_IGNORE_FILE) --exit-code 1 $(DOCKER_SCAN_IMAGE_NAME):$(DOCKER_SCAN_IMAGE_TAG)
 
 .PHONY: security/shell-scripts-scan
 security/shell-scripts-scan: deps/shellcheck ## Run shellcheck against tracked shell scripts.

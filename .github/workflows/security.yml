@@ -235,7 +235,7 @@ jobs:
             -t "${IMAGE_NAME}:${IMAGE_TAG}" \
             -t "${IMAGE_NAME}:latest" \
             .
-          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 "${IMAGE_NAME}:${IMAGE_TAG}"
+          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "${IMAGE_NAME}:${IMAGE_TAG}"
 
   shell-scripts-scan:
     name: shell-scripts-scan
@@ -312,15 +312,7 @@ jobs:
       github.event.action == 'labeled' &&
       github.event.label.name == 'security/run' &&
       always() &&
-      (needs.remove-label.result == 'failure' || needs.remove-label.result == 'cancelled' ||
-       needs.golang-code-scan.result == 'failure' || needs.golang-code-scan.result == 'cancelled' ||
-       needs.golang-deps-scan.result == 'failure' || needs.golang-deps-scan.result == 'cancelled' ||
-       needs.docs-deps-scan.result == 'failure' || needs.docs-deps-scan.result == 'cancelled' ||
-       needs.helm-scan.result == 'failure' || needs.helm-scan.result == 'cancelled' ||
-       needs.kubernetes-manifests-scan.result == 'failure' || needs.kubernetes-manifests-scan.result == 'cancelled' ||
-       needs.dockerfile-scan.result == 'failure' || needs.dockerfile-scan.result == 'cancelled' ||
-       needs.docker-image-scan.result == 'failure' || needs.docker-image-scan.result == 'cancelled' ||
-       needs.shell-scripts-scan.result == 'failure' || needs.shell-scripts-scan.result == 'cancelled')
+      (failure() || cancelled())
     runs-on: ubuntu-latest
     steps:
       - name: Apply security/fail (remove security/success)
