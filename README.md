@@ -1,7 +1,6 @@
 # IPFS CSI drover for Kubernetes
 
-[![CI DEV (Go/Docker)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-golang.yml/badge.svg)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-golang.yml)
-[![CI DEV (Helm charts)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-charts.yml/badge.svg)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/ci-dev-charts.yml)
+[![CI DEV (Helm charts)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/security.yml/badge.svg)](https://github.com/ptrvsrg/csi-driver-ipfs/actions/workflows/security.yml)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/csi-driver-ipfs)](https://artifacthub.io/packages/search?repo=csi-driver-ipfs)
 
 ## About
