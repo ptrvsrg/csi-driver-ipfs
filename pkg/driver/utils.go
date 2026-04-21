@@ -225,7 +225,7 @@ func getVolumeStats(path string) (*volumeStats, error) {
 		return nil, fmt.Errorf("statfs on path %s: %w", path, err)
 	}
 
-	blockSize := uint64(stat.Bsize)
+	blockSize := nonNegativeInt64ToUint64(int64(stat.Bsize))
 	usedBlocks := subtractUint64Saturating(stat.Blocks, stat.Bfree)
 
 	return &volumeStats{
@@ -243,6 +243,14 @@ func subtractUint64Saturating(a, b uint64) uint64 {
 		return 0
 	}
 	return a - b
+}
+
+func nonNegativeInt64ToUint64(v int64) uint64 {
+	if v <= 0 {
+		return 0
+	}
+	// #nosec G115 -- guarded against negative values just above
+	return uint64(v)
 }
 
 func uint64ToInt64Saturating(v uint64) int64 {
