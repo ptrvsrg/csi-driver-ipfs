@@ -5,7 +5,7 @@
 
 ## About
 
-CSI driver that provisions Kubernetes PersistentVolumes on top of IPFS.
+CSI driver that provisions Kubernetes PersistentVolumes on top of [IPFS](https://ipfs.tech/).
 
 ## Quick start (Helm)
 
