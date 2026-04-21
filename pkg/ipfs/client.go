@@ -268,11 +268,15 @@ func (c *client) AddPath(ctx context.Context, localPath string) (string, error) 
 
 		f, err := root.Open(filepath.Base(localPath))
 		if err != nil {
-			if err := root.Close(); err != nil {
-				return "", fmt.Errorf("close root %s for IPFS add: %w", rootDir, err)
+			openErr := fmt.Errorf("open file %s for IPFS add: %w", localPath, err)
+			if closeErr := root.Close(); closeErr != nil {
+				return "", errors.Join(
+					openErr,
+					fmt.Errorf("close root %s for IPFS add: %w", rootDir, closeErr),
+				)
 			}
 
-			return "", fmt.Errorf("open file %s for IPFS add: %w", localPath, err)
+			return "", openErr
 		}
 		// files.NewReaderFile takes ownership of the file handle; the bounded root
 		// can be released once the file descriptor is opened.
