@@ -113,6 +113,7 @@ spec:
 {{- end }}
           resources: {{- toYaml .Values.node.resources.nodeDriverRegistrar | nindent 12 }}
           securityContext:
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
               - ALL
@@ -121,8 +122,10 @@ spec:
           imagePullPolicy: {{ .Values.image.driver.pullPolicy }}
           securityContext:
             privileged: true
+            readOnlyRootFilesystem: true
             capabilities:
-              add: ["SYS_ADMIN"]
+              add:
+              - SYS_ADMIN
               drop:
               - ALL
             allowPrivilegeEscalation: true
@@ -163,6 +166,8 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+            - name: mount-dir
+              mountPath: /var/lib/csi-ipfs
             - name: pods-mount-dir
               mountPath: {{ .Values.kubeletDir }}/pods
               mountPropagation: "Bidirectional"
@@ -178,6 +183,8 @@ spec:
           hostPath:
             path: {{ .Values.kubeletDir }}/plugins/csi-ipfsplugin
             type: DirectoryOrCreate
+        - name: mount-dir
+          emptyDir: {}
         - name: pods-mount-dir
           hostPath:
             path: {{ .Values.kubeletDir }}/pods

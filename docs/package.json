@@ -15,9 +15,11 @@
     "react-dom": "19.2.5"
   },
   "overrides": {
-    "webpack": "5.94.0"
+    "serialize-javascript": "7.0.5",
+    "webpack": "5.105.0"
   },
   "resolutions": {
-    "webpack": "5.94.0"
+    "serialize-javascript": "7.0.5",
+    "webpack": "5.105.0"
   }
 }

@@ -20,20 +20,28 @@
 help: ## Show docs Makefile help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make -C docs \033[36m<target>\033[0m\n"} /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } /^[^[:space:]]+:.*##/ { gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-##@ Documentation
-
-.PHONY: install
-install: ## Install Docusaurus dependencies.
-	yarn install --frozen-lockfile
-
-.PHONY: start
-start: install ## Run local Docusaurus dev server.
-	yarn run start
-
-.PHONY: build
-build: install ## Build static docs site to docs/build.
-	yarn run build
-
 .PHONY: clean
 clean: ## Remove generated docs artifacts.
 	rm -rf build .docusaurus node_modules
+
+##@ Dependency
+
+.PHONY: deps/install
+deps/install: ## Install Docusaurus dependencies.
+	yarn install --frozen-lockfile
+
+##@ Development
+
+.PHONY: dev/start
+dev/start: deps/install ## Run local Docusaurus dev server.
+	yarn run start
+
+.PHONY: dev/build
+dev/build: deps/install ## Build static docs site to docs/build.
+	yarn run build
+
+##@ Security
+
+.PHONY: security/audit
+security/audit: deps/install ## Audit docs site runtime dependencies for known vulnerabilities.
+	yarn audit --level=high

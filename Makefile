@@ -22,6 +22,12 @@ BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 ## Location to install dependencies to
 GO_BIN ?= $(shell pwd)/bin
 YARN_BIN ?= $(shell pwd)/bin
+TRIVY_BIN := $(GO_BIN)/trivy
+TRIVY_SEVERITY ?= HIGH,CRITICAL
+SHELLCHECK_BIN ?= shellcheck
+SHELL_SCRIPTS := $(shell git ls-files '*.sh')
+DOCKER_SCAN_IMAGE_NAME ?= $(IMAGE_NAME)
+DOCKER_SCAN_IMAGE_TAG ?= $(subst /,-,$(VERSION))
 
 $(GOBIN):
 	mkdir -p $(GOBIN)
@@ -68,6 +74,28 @@ GOLANGCI_LINT_VERSION ?= 2.10.1
 deps/golangci-lint: ## Install golangci-lint into $(GOBIN) if missing.
 	$(call go_install_if_not_exists,golangci-lint,github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(GOLANGCI_LINT_VERSION))
 
+.PHONY: deps/gosec
+deps/gosec: ## Install gosec into $(GOBIN) if missing.
+	$(call go_install_if_not_exists,gosec,github.com/securego/gosec/v2/cmd/gosec@latest)
+
+.PHONY: deps/govulncheck
+deps/govulncheck: ## Install govulncheck into $(GOBIN) if missing.
+	$(call go_install_if_not_exists,govulncheck,golang.org/x/vuln/cmd/govulncheck@latest)
+
+.PHONY: deps/trivy
+deps/trivy: ## Install trivy into $(GO_BIN) if missing.
+	@if [ ! -x "$(TRIVY_BIN)" ]; then \
+		curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$(GO_BIN)"; \
+	fi
+
+.PHONY: deps/shellcheck
+deps/shellcheck: ## Verify shellcheck is available in PATH.
+	@command -v "$(SHELLCHECK_BIN)" >/dev/null 2>&1 || { \
+		echo "shellcheck is required but was not found in PATH."; \
+		echo "Install it locally (for example: brew install shellcheck or apt-get install shellcheck)."; \
+		exit 1; \
+	}
+
 MOCKERY_VERSION ?= 2.53.6
 .PHONY: deps/mockery
 deps/mockery: ## Install mockery into $(GOBIN) if missing.
@@ -93,6 +121,9 @@ deps/mod-download: ## Download go module dependencies.
 
 .PHONY: deps/all
 deps/all: deps/mod-download deps/editorconfig-checker deps/markdownlint deps/mockery deps/golangci-lint ## Download all dependencies.
+
+.PHONY: deps/security
+deps/security: deps/gosec deps/govulncheck deps/trivy deps/shellcheck ## Install local security scanners used by Make/CI.
 
 ##@ Generating
 
@@ -200,6 +231,40 @@ verify/go-mod: ## Verify go module dependencies.
 
 .PHONY: verify/all
 verify/all: verify/go-mod verify/fmt verify/vet verify/editorconfig verify/lint verify/license-header verify/markdownlint ## Verify modules and run all Go/static checks and Markdown.
+
+##@ Security
+
+.PHONY: security/golang-code-scan
+security/golang-code-scan: deps/gosec ## Run gosec against Go source code.
+	$(GO_BIN)/gosec -exclude-generated ./...
+
+.PHONY: security/golang-deps-scan
+security/golang-deps-scan: deps/trivy ## Run Trivy against Go module dependencies.
+	$(TRIVY_BIN) fs --quiet --scanners vuln --severity $(TRIVY_SEVERITY) --exit-code 1 --skip-dirs docs .
+
+.PHONY: security/docs-deps-scan
+security/docs-deps-scan: deps/trivy ## Run Trivy against docs/yarn dependencies.
+	$(TRIVY_BIN) fs --quiet --scanners vuln --severity $(TRIVY_SEVERITY) --exit-code 1 docs
+
+.PHONY: security/dockerfile-scan
+security/dockerfile-scan: deps/trivy ## Run Trivy config checks against the Dockerfile.
+	$(TRIVY_BIN) config --quiet --severity $(TRIVY_SEVERITY) --exit-code 1 Dockerfile
+
+.PHONY: security/docker-image-scan
+security/docker-image-scan: deps/trivy ## Build and scan the local Docker image with Trivy.
+	$(MAKE) build/docker IMAGE_NAME=$(DOCKER_SCAN_IMAGE_NAME) VERSION=$(DOCKER_SCAN_IMAGE_TAG)
+	$(TRIVY_BIN) image --quiet --severity $(TRIVY_SEVERITY) --exit-code 1 $(DOCKER_SCAN_IMAGE_NAME):$(DOCKER_SCAN_IMAGE_TAG)
+
+.PHONY: security/shell-scripts-scan
+security/shell-scripts-scan: deps/shellcheck ## Run shellcheck against tracked shell scripts.
+	@if [ -z "$(SHELL_SCRIPTS)" ]; then \
+		echo "No tracked shell scripts found."; \
+	else \
+		"$(SHELLCHECK_BIN)" -x $(SHELL_SCRIPTS); \
+	fi
+
+.PHONY: security/all
+security/all: security/golang-code-scan security/golang-deps-scan security/docs-deps-scan security/dockerfile-scan security/docker-image-scan security/shell-scripts-scan ## Run all configured security checks.
 
 ##@ Cleaning
 

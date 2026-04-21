@@ -2,6 +2,8 @@ module github.com/ptrvsrg/csi-driver-ipfs
 
 go 1.26
 
+toolchain go1.26.2
+
 require (
 	github.com/container-storage-interface/spec v1.9.0
 	github.com/golang/protobuf v1.5.4

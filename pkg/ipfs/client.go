@@ -260,11 +260,29 @@ func (c *client) AddPath(ctx context.Context, localPath string) (string, error) 
 			return "", fmt.Errorf("create file node for directory %s: %w", localPath, err)
 		}
 	} else {
-		f, err := os.Open(localPath)
+		rootDir := filepath.Dir(localPath)
+		root, err := os.OpenRoot(rootDir)
 		if err != nil {
+			return "", fmt.Errorf("open root %s for IPFS add: %w", rootDir, err)
+		}
+
+		f, err := root.Open(filepath.Base(localPath))
+		if err != nil {
+			if err := root.Close(); err != nil {
+				return "", fmt.Errorf("close root %s for IPFS add: %w", rootDir, err)
+			}
+
 			return "", fmt.Errorf("open file %s for IPFS add: %w", localPath, err)
 		}
-		// files.NewReaderFile takes ownership; closing happens when IPFS consumes it
+		// files.NewReaderFile takes ownership of the file handle; the bounded root
+		// can be released once the file descriptor is opened.
+		if err := root.Close(); err != nil {
+			if err := f.Close(); err != nil {
+				return "", fmt.Errorf("close root %s for IPFS add: %w", rootDir, err)
+			}
+			return "", fmt.Errorf("close root %s after IPFS add open: %w", rootDir, err)
+		}
+
 		node = files.NewReaderFile(f)
 	}
 
@@ -468,8 +486,17 @@ func (c *client) ImportToMFS(ctx context.Context, localPath string, mfsPath stri
 	}
 
 	var fileCount int
+	root, err := os.OpenRoot(localPath)
+	if err != nil {
+		return fmt.Errorf("open root %s for MFS import: %w", localPath, err)
+	}
+	defer func() {
+		if err := root.Close(); err != nil {
+			c.logger.Warn().Err(err).Str("local_path", localPath).Msg("close import root")
+		}
+	}()
 
-	err := filepath.Walk(
+	err = filepath.Walk(
 		localPath, func(path string, info os.FileInfo, walkErr error) error {
 			if walkErr != nil {
 				return fmt.Errorf("walk %s: %w", path, walkErr)
@@ -499,7 +526,7 @@ func (c *client) ImportToMFS(ctx context.Context, localPath string, mfsPath stri
 				Int64("size", info.Size()).
 				Msg("import file")
 
-			f, err := os.Open(path)
+			f, err := root.Open(relPath)
 			if err != nil {
 				return fmt.Errorf("open %s for import: %w", path, err)
 			}

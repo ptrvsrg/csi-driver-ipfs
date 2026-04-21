@@ -23,6 +23,8 @@ CR_CONFIG := $(CHART_DIR)/cr.yaml
 # Descriptions for per-chart targets (shown in `make help`; rules are generated via CHART_RULES_*).
 CHART_DESC_TEST := helm unittest (this chart only)
 CHART_DESC_LINT := helm lint (this chart only)
+CHART_DESC_HELM_SECURITY := trivy config scan for chart sources (this chart only)
+CHART_DESC_MANIFEST_SECURITY := trivy config scan for rendered manifests (this chart only)
 CHART_DESC_PACKAGE := cr package into dist/ (this chart only)
 CHART_DESC_RELEASE := package then cr upload (all *.tgz in dist/)
 
@@ -52,6 +54,19 @@ release/upload/$(1): release/package/$(1)
 	$(BIN_DIR)/cr upload --config $(CR_CONFIG) --skip-existing
 endef
 
+define CHART_RULES_SECURITY
+.PHONY: security/helm/$(1)
+security/helm/$(1): deps/trivy
+	$(BIN_DIR)/trivy config --quiet --severity HIGH,CRITICAL --exit-code 1 --ignorefile $(CHART_DIR)/$(1)/.trivyignore "$(CHART_DIR)/$(1)"
+
+.PHONY: security/manifests/$(1)
+security/manifests/$(1): deps/trivy
+	@mkdir -p $(DIST_DIR)
+	helm dependency update "$(CHART_DIR)/$(1)"
+	helm template "$(1)" "$(CHART_DIR)/$(1)" > "$(DIST_DIR)/$(1)-rendered.yaml"
+	$(BIN_DIR)/trivy config --quiet --severity HIGH,CRITICAL --exit-code 1 --ignorefile $(CHART_DIR)/$(1)/.trivyignore "$(DIST_DIR)/$(1)-rendered.yaml"
+endef
+
 .DEFAULT_GOAL := help
 
 ##@ General
@@ -62,6 +77,13 @@ help/per-chart-test:
 	@for c in $(CHARTS); do \
 		printf '  \033[36m%-28s\033[0m  [%s] $(CHART_DESC_TEST)\n' "test/$$c" "$$c"; \
 		printf '  \033[36m%-28s\033[0m  [%s] $(CHART_DESC_LINT)\n' "lint/$$c" "$$c"; \
+	done
+
+.PHONY: help/per-chart-security
+help/per-chart-security:
+	@for c in $(CHARTS); do \
+		printf '  \033[36m%-28s\033[0m  [%s] $(CHART_DESC_HELM_SECURITY)\n' "security/helm/$$c" "$$c"; \
+		printf '  \033[36m%-28s\033[0m  [%s] $(CHART_DESC_MANIFEST_SECURITY)\n' "security/manifests/$$c" "$$c"; \
 	done
 
 .PHONY: help/per-chart-release
@@ -75,6 +97,9 @@ help/per-chart-release:
 help: ## Show this help (Test / Release; per-chart targets are listed under each section).
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^##@ Release/ { exit } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } /^[^[:space:]]+:.*?##/ { printf "  \033[36m%-28s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@$(MAKE) -s help/per-chart-test
+	@echo ""
+	@echo "\033[1mSecurity\033[0m"
+	@$(MAKE) -s help/per-chart-security
 	@awk 'BEGIN {FS = ":.*##";} /^##@ Release/ { f=1; printf "\n\033[1m%s\033[0m\n", substr($$0, 5); next } f && /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5); next } f && /^[^[:space:]]+:.*?##/ { printf "  \033[36m%-28s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@$(MAKE) -s help/per-chart-release
 	@echo ''
@@ -108,15 +133,30 @@ deps/cr: .deps/make-bin-dir ## Ensure chart-releaser (cr) is available (PATH or 
 		chmod +x $(BIN_DIR)/cr; \
 	fi
 
+.PHONY: deps/trivy
+deps/trivy: .deps/make-bin-dir ## Ensure trivy is available in $(BIN_DIR).
+	@if [ ! -x "$(BIN_DIR)/trivy" ]; then \
+		curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$(BIN_DIR)"; \
+	fi
+
 ##@ Test
 
 $(foreach c,$(CHARTS),$(eval $(call CHART_RULES_TEST,$(c))))
+$(foreach c,$(CHARTS),$(eval $(call CHART_RULES_SECURITY,$(c))))
 
 .PHONY: test/all
 test/all: $(addprefix test/,$(CHARTS)) ## Run helm unittest for every chart.
 
 .PHONY: lint/all
 lint/all: $(addprefix lint/,$(CHARTS)) ## Run helm lint for every chart.
+
+##@ Security
+
+.PHONY: security/helm/all
+security/helm/all: $(addprefix security/helm/,$(CHARTS)) ## Run Trivy config scan for every chart source.
+
+.PHONY: security/manifests/all
+security/manifests/all: $(addprefix security/manifests/,$(CHARTS)) ## Run Trivy config scan for every rendered chart manifest.
 
 ##@ Release
 
