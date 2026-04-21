@@ -86,7 +86,6 @@ jobs:
     name: golang-deps-scan
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
-      - remove-label
       - golang-code-scan
     runs-on: ubuntu-latest
     steps:
@@ -154,7 +153,6 @@ jobs:
     name: kubernetes-manifests-scan
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
-      - remove-label
       - helm-scan
     runs-on: ubuntu-latest
     strategy:
@@ -208,7 +206,6 @@ jobs:
     name: docker-image-scan
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
-      - remove-label
       - dockerfile-scan
     runs-on: ubuntu-latest
     steps:
@@ -268,12 +265,9 @@ jobs:
   security-label-success:
     name: "PR label: security/success"
     needs:
-      - golang-code-scan
       - golang-deps-scan
       - docs-deps-scan
-      - helm-scan
       - kubernetes-manifests-scan
-      - dockerfile-scan
       - docker-image-scan
       - shell-scripts-scan
     if: >-
