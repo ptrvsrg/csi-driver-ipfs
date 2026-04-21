@@ -133,6 +133,8 @@ jobs:
   kubernetes-manifests-scan:
     name: kubernetes-manifests-scan
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
+    needs:
+      - helm-scan
     runs-on: ubuntu-latest
     strategy:
       matrix:
