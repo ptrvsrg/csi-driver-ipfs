@@ -2,7 +2,7 @@ apiVersion: v2
 name: csi-driver-ipfs
 description: CSI driver for IPFS volumes in Kubernetes
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "0.1.0"
 kubeVersion: ">=1.35"
 icon: https://ptrvsrg.github.io/csi-driver-ipfs/img/ipfs-logo-1024-ice-text.png
