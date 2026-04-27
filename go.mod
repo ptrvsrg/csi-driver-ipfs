@@ -13,7 +13,7 @@ require (
 	github.com/ipfs/kubo v0.40.1
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.4.0
 	github.com/multiformats/go-multiaddr v0.16.1
-	github.com/rs/zerolog v1.35.0
+	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
 	github.com/timandy/routine v1.1.6
 	google.golang.org/grpc v1.80.0
