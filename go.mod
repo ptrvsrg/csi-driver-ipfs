@@ -3,7 +3,7 @@ module github.com/ptrvsrg/csi-driver-ipfs
 go 1.26.2
 
 require (
-	github.com/container-storage-interface/spec v1.9.0
+	github.com/container-storage-interface/spec v1.12.0
 	github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/ipfs/boxo v0.39.0
