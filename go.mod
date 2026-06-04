@@ -19,7 +19,7 @@ require (
 	k8s.io/api v0.36.1
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
-	k8s.io/mount-utils v0.35.4
+	k8s.io/mount-utils v0.36.1
 )
 
 require (
