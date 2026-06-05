@@ -1,6 +1,6 @@
 module github.com/ptrvsrg/csi-driver-ipfs
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/container-storage-interface/spec v1.12.0

@@ -79,14 +79,15 @@ GOLANGCI_LINT_VERSION ?= 2.10.1
 deps/golangci-lint: ## Install golangci-lint into $(GOBIN) if missing.
 	$(call go_install_if_not_exists,golangci-lint,github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(GOLANGCI_LINT_VERSION))
 
-GOSEC_VERSION ?= 2.25.0
+GOSEC_VERSION ?= 2.27.1
 .PHONY: deps/gosec
 deps/gosec: ## Install gosec into $(GOBIN) if missing.
-	$(call go_install_if_not_exists,gosec,github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION))
+	$(call go_install_if_not_exists,gosec,github.com/securego/gosec/v2/cmd/gosec@v$(GOSEC_VERSION))
 
+GOVULNCHECK_VERSION ?= 1.1.4
 .PHONY: deps/govulncheck
 deps/govulncheck: ## Install govulncheck into $(GOBIN) if missing.
-	$(call go_install_if_not_exists,govulncheck,golang.org/x/vuln/cmd/govulncheck@latest)
+	$(call go_install_if_not_exists,govulncheck,golang.org/x/vuln/cmd/govulncheck@v$(GOVULNCHECK_VERSION))
 
 .PHONY: deps/trivy
 deps/trivy: ## Install trivy into $(GO_BIN) if missing.

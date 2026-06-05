@@ -241,7 +241,7 @@ spec:
       hostNetwork: true # original ipfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-ipfs-node
-      priorityClassName: 
+      priorityClassName: ""
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -432,7 +432,7 @@ spec:
     # runOnControlPlane=true or runOnMaster=true only takes effect if affinity is not set
       nodeSelector:
         kubernetes.io/os: linux
-      priorityClassName: 
+      priorityClassName: ""
       securityContext:
         seccompProfile:
           type: RuntimeDefault

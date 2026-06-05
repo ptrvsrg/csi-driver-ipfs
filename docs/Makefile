@@ -44,4 +44,4 @@ dev/build: deps/install ## Build static docs site to docs/build.
 
 .PHONY: security/audit
 security/audit: deps/install ## Audit docs site runtime dependencies for known vulnerabilities.
-	yarn audit --level=high
+	yarn npm audit
