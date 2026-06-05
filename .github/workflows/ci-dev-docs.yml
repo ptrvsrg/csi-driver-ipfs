@@ -37,6 +37,7 @@ permissions:
 
 env:
   NODE_VERSION: "20"
+  YARN_VERSION: "4.16.0"
 
 jobs:
   build:
@@ -62,6 +63,9 @@ jobs:
 
       - name: Enable Corepack
         run: corepack enable
+
+      - name: Prepare Yarn
+        run: corepack prepare yarn@${{ env.YARN_VERSION }} --activate
 
       - name: Install dependencies
         run: yarn --cwd docs install --immutable
