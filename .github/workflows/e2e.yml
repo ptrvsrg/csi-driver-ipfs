@@ -34,7 +34,7 @@ env:
 
 jobs:
   prepare:
-    name: "Prepare e2e run"
+    name: prepare
     if: ${{ github.event.label.name == 'e2e/run' }}
     runs-on: ubuntu-latest
     steps:
@@ -212,7 +212,7 @@ jobs:
           kind delete cluster --name csi-ipfs-e2e 2>/dev/null || true
 
   e2e-label-result:
-    name: "PR label: e2e outcome"
+    name: e2e-label-result
     needs:
       - prepare
       - wait-image
@@ -222,7 +222,8 @@ jobs:
     steps:
       - name: Apply e2e/success (remove e2e/fail)
         if: >-
-          needs.prepare.result == 'success' && needs.wait-image.result == 'success' &&
+          needs.prepare.result == 'success' &&
+          needs.wait-image.result == 'success' &&
           needs.e2e.result == 'success'
         uses: actions/github-script@v9
         with:
@@ -247,9 +248,12 @@ jobs:
 
       - name: Apply e2e/fail (remove e2e/success)
         if: >-
-          needs.prepare.result == 'failure' || needs.prepare.result == 'cancelled' ||
-          needs.wait-image.result == 'failure' || needs.wait-image.result == 'cancelled' ||
-          needs.e2e.result == 'failure' || needs.e2e.result == 'cancelled'
+          needs.prepare.result == 'failure' ||
+          needs.prepare.result == 'cancelled' ||
+          needs.wait-image.result == 'failure' ||
+          needs.wait-image.result == 'cancelled' ||
+          needs.e2e.result == 'failure' ||
+          needs.e2e.result == 'cancelled'
         uses: actions/github-script@v9
         with:
           script: |
