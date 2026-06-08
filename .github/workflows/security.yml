@@ -276,7 +276,7 @@ jobs:
 
       - name: Build and scan Docker image
         run: |
-          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "${IMAGE_NAME}:${IMAGE_TAG}"
+          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}"
 
   shell-scripts-scan:
     name: shell-scripts-scan
