@@ -224,7 +224,7 @@ jobs:
     name: "Wait Docker image"
     needs:
       - prepare
-    if: ${{ github.event.label.name == 'e2e/run' }}
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     timeout-minutes: 32
     steps:
