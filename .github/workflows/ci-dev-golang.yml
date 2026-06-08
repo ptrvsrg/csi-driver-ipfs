@@ -246,7 +246,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: 3p/ipfs/kubo
-          file: Dockerfile
+          file: 3p/ipfs/kubo/Dockerfile
           push: true
           build-args: |
             KUBO_VERSION=${{ env.KUBO_VERSION }}
