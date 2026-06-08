@@ -215,7 +215,7 @@ jobs:
         run: trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 Dockerfile
 
   wait-image:
-    name: "Wait Docker image"
+    name: wait-image
     needs:
       - prepare
     runs-on: ubuntu-latest

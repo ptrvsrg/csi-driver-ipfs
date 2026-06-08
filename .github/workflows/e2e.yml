@@ -63,7 +63,7 @@ jobs:
           labels: e2e/run
 
   wait-image:
-    name: "Wait Docker image"
+    name: wait-image
     needs:
       - prepare
     if: ${{ github.event.label.name == 'e2e/run' }}
@@ -105,7 +105,7 @@ jobs:
           exit 1
 
   e2e:
-    name: "E2E: kind + helm + ginkgo"
+    name: e2e
     needs:
       - wait-image
     if: ${{ github.event.label.name == 'e2e/run' }}
