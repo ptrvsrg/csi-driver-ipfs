@@ -220,11 +220,54 @@ jobs:
       - name: Run Trivy on Dockerfile
         run: trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 Dockerfile
 
+  wait-image:
+    name: "Wait Docker image"
+    needs:
+      - prepare
+    if: ${{ github.event.label.name == 'e2e/run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for CSI driver image on GHCR (up to 30 min, every 10s)
+        run: |
+          set -euo pipefail
+          image='ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}'
+          timeout_secs=1800
+          start_ts=$(date +%s)
+          while true; do
+            if docker manifest inspect "$image" >/dev/null 2>&1; then
+              elapsed=$(( $(date +%s) - start_ts ))
+              echo "OK: manifest present — ${image} (after ${elapsed}s)"
+              exit 0
+            fi
+            elapsed=$(( $(date +%s) - start_ts ))
+            if (( elapsed >= timeout_secs )); then
+              break
+            fi
+            echo "Image not ready yet (${elapsed}s / ${timeout_secs}s), retry in 10s…"
+            sleep 10
+          done
+          if docker manifest inspect "$image" >/dev/null 2>&1; then
+            elapsed=$(( $(date +%s) - start_ts ))
+            echo "OK: manifest present — ${image} (after ${elapsed}s)"
+            exit 0
+          fi
+          echo "::error title=E2E image missing::No manifest for ${image} within 30 minutes. Run or wait for CI DEV (Go) docker-build-push for this PR merge SHA, then re-add the e2e label."
+          exit 1
+
   docker-image-scan:
     name: docker-image-scan
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
       - dockerfile-scan
+      - wait-image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
