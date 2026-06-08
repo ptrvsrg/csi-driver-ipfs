@@ -284,18 +284,6 @@ jobs:
 
       - name: Build and scan Docker image
         run: |
-          set -euo pipefail
-          IMAGE_NAME="csi-driver-ipfs-security"
-          IMAGE_TAG="security-${{ github.sha }}"
-          BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          docker build \
-            --build-arg VERSION="${IMAGE_TAG}" \
-            --build-arg GIT_COMMIT="${{ github.sha }}" \
-            --build-arg BUILD_DATE="${BUILD_DATE}" \
-            --network=host \
-            -t "${IMAGE_NAME}:${IMAGE_TAG}" \
-            -t "${IMAGE_NAME}:latest" \
-            .
           trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "${IMAGE_NAME}:${IMAGE_TAG}"
 
   shell-scripts-scan:
