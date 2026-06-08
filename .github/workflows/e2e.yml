@@ -17,7 +17,7 @@ name: E2E tests
 on:
   pull_request:
     types:
-     - labeled
+    - labeled
 
 permissions:
   contents: read
@@ -29,25 +29,43 @@ env:
   HELM_VERSION: v4.1.4
   KUBECTL_VERSION: v1.35.0
   KIND_VERSION: v0.31.0
-  GINKGO_VERSION: v2.28.1
+  GINKGO_VERSION: v2.29.0
   EXTERNAL_SNAPSHOTTER_VERSION: v8.5.0
 
 jobs:
-  remove-label:
-    name: "Remove e2e label"
+  prepare:
+    name: prepare
     if: ${{ github.event.label.name == 'e2e/run' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Remove e2e label
+      - name: Post workflow run comment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('No pull_request in event payload');
+              return;
+            }
+
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `E2E workflow has been started.\n\nWorkflow run: ${runUrl}`,
+            });
+
+      - name: Remove e2e/run label
         uses: mondeja/remove-labels-gh-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           labels: e2e/run
 
   wait-image:
-    name: "Wait Docker image"
+    name: wait-image
     needs:
-      - remove-label
+      - prepare
     if: ${{ github.event.label.name == 'e2e/run' }}
     runs-on: ubuntu-latest
     timeout-minutes: 32
@@ -87,7 +105,7 @@ jobs:
           exit 1
 
   e2e:
-    name: "E2E: kind + helm + ginkgo"
+    name: e2e
     needs:
       - wait-image
     if: ${{ github.event.label.name == 'e2e/run' }}
@@ -194,9 +212,9 @@ jobs:
           kind delete cluster --name csi-ipfs-e2e 2>/dev/null || true
 
   e2e-label-result:
-    name: "PR label: e2e outcome"
+    name: e2e-label-result
     needs:
-      - remove-label
+      - prepare
       - wait-image
       - e2e
     if: always()
@@ -204,7 +222,8 @@ jobs:
     steps:
       - name: Apply e2e/success (remove e2e/fail)
         if: >-
-          needs.remove-label.result == 'success' && needs.wait-image.result == 'success' &&
+          needs.prepare.result == 'success' &&
+          needs.wait-image.result == 'success' &&
           needs.e2e.result == 'success'
         uses: actions/github-script@v9
         with:
@@ -229,9 +248,12 @@ jobs:
 
       - name: Apply e2e/fail (remove e2e/success)
         if: >-
-          needs.remove-label.result == 'failure' || needs.remove-label.result == 'cancelled' ||
-          needs.wait-image.result == 'failure' || needs.wait-image.result == 'cancelled' ||
-          needs.e2e.result == 'failure' || needs.e2e.result == 'cancelled'
+          needs.prepare.result == 'failure' ||
+          needs.prepare.result == 'cancelled' ||
+          needs.wait-image.result == 'failure' ||
+          needs.wait-image.result == 'cancelled' ||
+          needs.e2e.result == 'failure' ||
+          needs.e2e.result == 'cancelled'
         uses: actions/github-script@v9
         with:
           script: |

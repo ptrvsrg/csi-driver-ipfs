@@ -20,10 +20,10 @@ metadata:
   name: csi-ipfs-controller
   namespace: csi-ipfs
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
@@ -33,10 +33,10 @@ metadata:
   name: csi-ipfs-node
   namespace: csi-ipfs
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: csi-driver-ipfs/templates/storageclass.yaml
@@ -45,10 +45,10 @@ kind: StorageClass
 metadata:
   name: ipfs-csi
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
@@ -63,10 +63,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ipfs-external-provisioner-role
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 rules:
   - apiGroups: [""]
@@ -106,10 +106,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ipfs-external-resizer-role
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 rules:
   - apiGroups: [""]
@@ -135,10 +135,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ipfs-csi-node-role
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 rules:
   - apiGroups: [""]
@@ -154,10 +154,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ipfs-csi-resizer-role
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 subjects:
   - kind: ServiceAccount
@@ -174,10 +174,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ipfs-csi-provisioner-binding
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 subjects:
   - kind: ServiceAccount
@@ -194,10 +194,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ipfs-csi-node-binding
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 subjects:
   - kind: ServiceAccount
@@ -215,10 +215,10 @@ metadata:
   name: csi-ipfs-node
   namespace: csi-ipfs
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   updateStrategy:
@@ -231,17 +231,17 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: csi-driver-ipfs-0.1.1
+        helm.sh/chart: csi-driver-ipfs-0.2.0
         app.kubernetes.io/name: csi-driver-ipfs
         app.kubernetes.io/instance: csi-driver-ipfs
-        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/version: "0.2.0"
         app.kubernetes.io/managed-by: Helm
         app: csi-ipfs-node
     spec:
       hostNetwork: true # original ipfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-ipfs-node
-      priorityClassName: ""
+      priorityClassName: 
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -372,6 +372,8 @@ spec:
               mountPath: /csi
             - name: mount-dir
               mountPath: /var/lib/csi-ipfs
+            - name: plugins-dir
+              mountPath: /var/lib/kubelet/plugins
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -388,6 +390,10 @@ spec:
             type: DirectoryOrCreate
         - name: mount-dir
           emptyDir: {}
+        - name: plugins-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins
+            type: Directory
         - name: pods-mount-dir
           hostPath:
             path: /var/lib/kubelet/pods
@@ -404,10 +410,10 @@ metadata:
   name: csi-ipfs-controller
   namespace: csi-ipfs
   labels:
-    helm.sh/chart: csi-driver-ipfs-0.1.1
+    helm.sh/chart: csi-driver-ipfs-0.2.0
     app.kubernetes.io/name: csi-driver-ipfs
     app.kubernetes.io/instance: csi-driver-ipfs
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -419,10 +425,10 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: csi-driver-ipfs-0.1.1
+        helm.sh/chart: csi-driver-ipfs-0.2.0
         app.kubernetes.io/name: csi-driver-ipfs
         app.kubernetes.io/instance: csi-driver-ipfs
-        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/version: "0.2.0"
         app.kubernetes.io/managed-by: Helm
         app: csi-ipfs-controller
     spec:

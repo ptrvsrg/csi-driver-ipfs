@@ -45,6 +45,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+              add:
+                - CHOWN
           volumeMounts:
             - name: ipfs-storage
               mountPath: /data/ipfs
@@ -62,6 +64,10 @@ spec:
             capabilities:
               drop:
                 - ALL
+              add:
+                - CHOWN
+                - SETGID
+                - SETUID
           env:
             - name: IPFS_FD_MAX
               value: "4096"
@@ -77,13 +83,13 @@ spec:
               protocol: TCP
           readinessProbe:
             exec:
-              command: ["ipfs", "id", "--offline"]
+              command: ["/sbin/gosu", "ipfs", "ipfs", "id", "--offline"]
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             exec:
-              command: ["ipfs", "id", "--offline"]
+              command: ["/sbin/gosu", "ipfs", "ipfs", "id", "--offline"]
             initialDelaySeconds: 30
             timeoutSeconds: 5
             periodSeconds: 15

@@ -45,11 +45,29 @@ env:
   TRIVY_VERSION: v0.69.3
 
 jobs:
-  remove-label:
-    name: "Remove security label"
-    if: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'security/run' }}
+  prepare:
+    name: prepare
+    if: ${{ github.event.label.name == 'security/run' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Post workflow run comment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('No pull_request in event payload');
+              return;
+            }
+
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `Security workflow has been started.\n\nWorkflow run: ${runUrl}`,
+            });
+
       - name: Remove security/run label
         uses: mondeja/remove-labels-gh-action@v2
         with:
@@ -58,10 +76,9 @@ jobs:
 
   golang-code-scan:
     name: golang-code-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -84,7 +101,6 @@ jobs:
 
   golang-deps-scan:
     name: golang-deps-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
       - golang-code-scan
     runs-on: ubuntu-latest
@@ -103,9 +119,8 @@ jobs:
 
   docs-deps-scan:
     name: docs-deps-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
-      - remove-label
+      - prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -122,10 +137,9 @@ jobs:
 
   helm-scan:
     name: helm-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     strategy:
       matrix:
         chart:
@@ -151,7 +165,6 @@ jobs:
 
   kubernetes-manifests-scan:
     name: kubernetes-manifests-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
       - helm-scan
     runs-on: ubuntu-latest
@@ -185,10 +198,9 @@ jobs:
 
   dockerfile-scan:
     name: dockerfile-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -202,11 +214,52 @@ jobs:
       - name: Run Trivy on Dockerfile
         run: trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 Dockerfile
 
+  wait-image:
+    name: wait-image
+    needs:
+      - prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for CSI driver image on GHCR (up to 30 min, every 10s)
+        run: |
+          set -euo pipefail
+          image='ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}'
+          timeout_secs=1800
+          start_ts=$(date +%s)
+          while true; do
+            if docker manifest inspect "$image" >/dev/null 2>&1; then
+              elapsed=$(( $(date +%s) - start_ts ))
+              echo "OK: manifest present — ${image} (after ${elapsed}s)"
+              exit 0
+            fi
+            elapsed=$(( $(date +%s) - start_ts ))
+            if (( elapsed >= timeout_secs )); then
+              break
+            fi
+            echo "Image not ready yet (${elapsed}s / ${timeout_secs}s), retry in 10s…"
+            sleep 10
+          done
+          if docker manifest inspect "$image" >/dev/null 2>&1; then
+            elapsed=$(( $(date +%s) - start_ts ))
+            echo "OK: manifest present — ${image} (after ${elapsed}s)"
+            exit 0
+          fi
+          echo "::error title=E2E image missing::No manifest for ${image} within 30 minutes. Run or wait for CI DEV (Go) docker-build-push for this PR merge SHA, then re-add the e2e label."
+          exit 1
+
   docker-image-scan:
     name: docker-image-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
       - dockerfile-scan
+      - wait-image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -223,26 +276,13 @@ jobs:
 
       - name: Build and scan Docker image
         run: |
-          set -euo pipefail
-          IMAGE_NAME="csi-driver-ipfs-security"
-          IMAGE_TAG="security-${{ github.sha }}"
-          BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          docker build \
-            --build-arg VERSION="${IMAGE_TAG}" \
-            --build-arg GIT_COMMIT="${{ github.sha }}" \
-            --build-arg BUILD_DATE="${BUILD_DATE}" \
-            --network=host \
-            -t "${IMAGE_NAME}:${IMAGE_TAG}" \
-            -t "${IMAGE_NAME}:latest" \
-            .
-          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "${IMAGE_NAME}:${IMAGE_TAG}"
+          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}"
 
   shell-scripts-scan:
     name: shell-scripts-scan
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -262,22 +302,33 @@ jobs:
           fi
           shellcheck -x "${shell_scripts[@]}"
 
-  security-label-success:
-    name: "PR label: security/success"
+  security-label-result:
+    name: security-label-result
     needs:
+      - prepare
+      - golang-code-scan
       - golang-deps-scan
       - docs-deps-scan
+      - helm-scan
       - kubernetes-manifests-scan
+      - dockerfile-scan
+      - wait-image
       - docker-image-scan
       - shell-scripts-scan
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.action == 'labeled' &&
-      github.event.label.name == 'security/run' &&
-      success()
     runs-on: ubuntu-latest
     steps:
       - name: Apply security/success (remove security/fail)
+        if: >-
+          needs.prepare.result == 'success' &&
+          needs.golang-code-scan.result == 'success' &&
+          needs.golang-deps-scan.result == 'success' &&
+          needs.docs-deps-scan.result == 'success' &&
+          needs.helm-scan.result == 'success' &&
+          needs.kubernetes-manifests-scan.result == 'success' &&
+          needs.dockerfile-scan.result == 'success' &&
+          needs.wait-image.result == 'success' &&
+          needs.docker-image-scan.result == 'success' &&
+          needs.shell-scripts-scan.result == 'success'
         uses: actions/github-script@v9
         with:
           script: |
@@ -298,24 +349,28 @@ jobs:
             await github.rest.issues.addLabels({
               owner, repo, issue_number: pr, labels: ['security/success'],
             });
-
-  security-label-fail:
-    name: "PR label: security/fail"
-    needs:
-      - golang-deps-scan
-      - docs-deps-scan
-      - kubernetes-manifests-scan
-      - docker-image-scan
-      - shell-scripts-scan
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.action == 'labeled' &&
-      github.event.label.name == 'security/run' &&
-      always() &&
-      (failure() || cancelled())
-    runs-on: ubuntu-latest
-    steps:
       - name: Apply security/fail (remove security/success)
+        if: >-
+          needs.prepare.result == 'failure' ||
+          needs.prepare.result == 'cancelled' ||
+          needs.golang-code-scan.result == 'failure' ||
+          needs.golang-code-scan.result == 'cancelled' ||
+          needs.golang-deps-scan.result == 'failure' ||
+          needs.golang-deps-scan.result == 'cancelled' ||
+          needs.docs-deps-scan.result == 'failure' ||
+          needs.docs-deps-scan.result == 'cancelled' ||
+          needs.helm-scan.result == 'failure' ||
+          needs.helm-scan.result == 'cancelled' ||
+          needs.kubernetes-manifests-scan.result == 'failure' ||
+          needs.kubernetes-manifests-scan.result == 'cancelled' ||
+          needs.dockerfile-scan.result == 'failure' ||
+          needs.dockerfile-scan.result == 'cancelled' ||
+          needs.wait-image.result == 'failure' ||
+          needs.wait-image.result == 'cancelled' ||
+          needs.docker-image-scan.result == 'failure' ||
+          needs.docker-image-scan.result == 'cancelled'||
+          needs.shell-scripts-scan.result == 'failure' ||
+          needs.shell-scripts-scan.result == 'cancelled'
         uses: actions/github-script@v9
         with:
           script: |

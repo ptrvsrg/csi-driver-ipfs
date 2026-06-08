@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GOLANG_VERSION=1.26.2
+ARG GOLANG_VERSION=1.26.4
 ARG ALPINE_VERSION=3.23
-ARG KUBO_VERSION=0.40.1
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG KUBO_VERSION=0.41.0
 
 # Dependency stage
 FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION} AS deps
@@ -24,14 +22,15 @@ FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION} AS deps
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+RUN go mod download
 
 # Build stage
 FROM deps AS builder
 
 COPY . .
 
+ARG TARGETOS
+ARG TARGETARCH
 ARG VERSION=dev
 ARG GIT_COMMIT=unknown
 ARG BUILD_DATE=unknown
@@ -45,7 +44,8 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 \
     -o /bin/csi-driver-ipfs \
     ./cmd/csi-driver-ipfs/
 
-FROM ipfs/kubo:v${KUBO_VERSION} AS kubo
+# Build Kubo from the pinned upstream tag with local patches
+FROM ghcr.io/ptrvsrg/csi-driver-ipfs/ipfs/kubo:${KUBO_VERSION} AS kubo
 
 # Runtime stage
 FROM alpine:${ALPINE_VERSION} AS runtime
