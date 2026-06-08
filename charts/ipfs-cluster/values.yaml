@@ -18,12 +18,12 @@ image:
   # Image for IPFS (Kubo)
   ipfs:
     repository: ipfs/kubo
-    tag: v0.39.0
+    tag: v0.41.0
     pullPolicy: IfNotPresent
   # Image for IPFS Cluster
   cluster:
     repository: ipfs/ipfs-cluster
-    tag: v1.1.5
+    tag: v1.1.6
     pullPolicy: IfNotPresent
 
 # Storage for cluster state and IPFS repo

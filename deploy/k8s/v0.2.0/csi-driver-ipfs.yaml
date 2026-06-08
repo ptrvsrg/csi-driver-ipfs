@@ -1,0 +1,632 @@
+# Copyright 2026 ptrvsrg.
+#
+# Licensed under the Apache License, Version 2.0 (the License);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an 'AS IS' BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-ipfs-controller
+  namespace: csi-ipfs
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-ipfs-node
+  namespace: csi-ipfs
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: csi-driver-ipfs/templates/storageclass.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ipfs-csi
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ipfs.csi.ptrvsrg.github.io
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ipfs-external-provisioner-role
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotclasses", "volumesnapshots"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ipfs-external-resizer-role
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+# CSI driver node DaemonSet: informers list/watch PV and VolumeSnapshotContent (same as controller).
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ipfs-csi-node-role
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list", "watch"]
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ipfs-csi-resizer-role
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+subjects:
+  - kind: ServiceAccount
+    name: csi-ipfs-controller
+    namespace: csi-ipfs
+roleRef:
+  kind: ClusterRole
+  name: ipfs-external-resizer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ipfs-csi-provisioner-binding
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+subjects:
+  - kind: ServiceAccount
+    name: csi-ipfs-controller
+    namespace: csi-ipfs
+roleRef:
+  kind: ClusterRole
+  name: ipfs-external-provisioner-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: csi-driver-ipfs/templates/rbac-csi-ipfs.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ipfs-csi-node-binding
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+subjects:
+  - kind: ServiceAccount
+    name: csi-ipfs-node
+    namespace: csi-ipfs
+roleRef:
+  kind: ClusterRole
+  name: ipfs-csi-node-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: csi-driver-ipfs/templates/csi-ipfs-node.yaml
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-ipfs-node
+  namespace: csi-ipfs
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: csi-ipfs-node
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: csi-driver-ipfs-0.2.0
+        app.kubernetes.io/name: csi-driver-ipfs
+        app.kubernetes.io/instance: csi-driver-ipfs
+        app.kubernetes.io/version: "0.2.0"
+        app.kubernetes.io/managed-by: Helm
+        app: csi-ipfs-node
+    spec:
+      hostNetwork: true # original ipfs connection would be broken without hostNetwork setting
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: csi-ipfs-node
+      priorityClassName: 
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: liveness-probe
+          image: "registry.k8s.io/sig-storage/livenessprobe:v2.18.0"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --probe-timeout=3s
+            - --http-endpoint=:29653
+            - --v=2
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+        - name: node-driver-registrar
+          image: "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.16.0"
+          args:
+            - --v=2
+            - --csi-address=/csi/csi.sock
+            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+            - --http-endpoint=:19809
+          env:
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/csi-ipfsplugin/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+          ports:
+            - name: healthz
+              containerPort: 19809
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 0
+            timeoutSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          resources:
+            limits:
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+        - name: node
+          image: "ghcr.io/ptrvsrg/csi-driver-ipfs:latest"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            capabilities:
+              add:
+              - SYS_ADMIN
+              drop:
+              - ALL
+            allowPrivilegeEscalation: true
+          args:
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodeid=$(NODE_ID)"
+            - "--drivername=ipfs.csi.ptrvsrg.github.io"
+            - "--ipfs-api=$(IPFS_API)"
+            - "--ipfs-mfs-root=/csi-volumes"
+            - "--mount-dir=/var/lib/csi-ipfs"
+            - "--log-level=info"
+            - "--log-format=json"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: IPFS_API
+              value: "/dns4/demo-ipfs-cluster-0.demo-ipfs-cluster.ipfs.svc.cluster.local/tcp/5001"
+          # livenessprobe HTTP does not listen until CSI socket exists (upstream behavior).
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 29653
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 29653
+            initialDelaySeconds: 0
+            timeoutSeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: mount-dir
+              mountPath: /var/lib/csi-ipfs
+            - name: plugins-dir
+              mountPath: /var/lib/kubelet/plugins
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: "Bidirectional"
+          resources:
+            limits:
+              memory: 300Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi-ipfsplugin
+            type: DirectoryOrCreate
+        - name: mount-dir
+          emptyDir: {}
+        - name: plugins-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins
+            type: Directory
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
+        - hostPath:
+            path: /var/lib/kubelet/plugins_registry
+            type: Directory
+          name: registration-dir
+---
+# Source: csi-driver-ipfs/templates/csi-ipfs-controller.yaml
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: csi-ipfs-controller
+  namespace: csi-ipfs
+  labels:
+    helm.sh/chart: csi-driver-ipfs-0.2.0
+    app.kubernetes.io/name: csi-driver-ipfs
+    app.kubernetes.io/instance: csi-driver-ipfs
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-ipfs-controller
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: csi-driver-ipfs-0.2.0
+        app.kubernetes.io/name: csi-driver-ipfs
+        app.kubernetes.io/instance: csi-driver-ipfs
+        app.kubernetes.io/version: "0.2.0"
+        app.kubernetes.io/managed-by: Helm
+        app: csi-ipfs-controller
+    spec:
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
+      serviceAccountName: csi-ipfs-controller
+    # runOnControlPlane=true or runOnMaster=true only takes effect if affinity is not set
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: 
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/controlplane
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+        - effect: NoSchedule
+          key: CriticalAddonsOnly
+          operator: Exists
+      containers:
+        - name: csi-provisioner
+          image: "registry.k8s.io/sig-storage/csi-provisioner:v6.1.1"
+          args:
+            - "-v=2"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election"
+            - "--leader-election-namespace=csi-ipfs"
+            - "--extra-create-metadata=true"
+            - "--feature-gates=HonorPVReclaimPolicy=true,VolumeAttributesClass=false"
+            - "--timeout=1200s"
+            - "--retry-interval-max=30m"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          resources:
+            limits:
+              memory: 400Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+        - name: csi-resizer
+          image: "registry.k8s.io/sig-storage/csi-resizer:v2.1.0"
+          args:
+            - "-csi-address=$(ADDRESS)"
+            - "-v=2"
+            - "-leader-election"
+            - "--leader-election-namespace=csi-ipfs"
+            - '-handle-volume-inuse-error=false'
+            - '-feature-gates=VolumeAttributesClass=false'
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 400Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+        - name: csi-snapshotter
+          image: "registry.k8s.io/sig-storage/csi-snapshotter:v8.5.0"
+          args:
+            - "--v=2"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election-namespace=csi-ipfs"
+            - "--leader-election"
+            - "--timeout=1200s"
+            - "--retry-interval-max=30m"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+        - name: liveness-probe
+          image: "registry.k8s.io/sig-storage/livenessprobe:v2.18.0"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --probe-timeout=3s
+            - --http-endpoint=:29652
+            - --v=2
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+        - name: controller
+          image: "ghcr.io/ptrvsrg/csi-driver-ipfs:latest"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: false
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+            allowPrivilegeEscalation: false
+          args:
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodeid=$(NODE_ID)"
+            - "--drivername=ipfs.csi.ptrvsrg.github.io"
+            - "--ipfs-api=/dns4/demo-ipfs-cluster-0.demo-ipfs-cluster.ipfs.svc.cluster.local/tcp/5001"
+            - "--ipfs-mfs-root=/csi-volumes"
+            - "--mount-dir=/tmp"
+            - "--log-level=info"
+            - "--log-format=json"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 29652
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 29652
+            initialDelaySeconds: 0
+            timeoutSeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+            - mountPath: /tmp
+              name: working-dir
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        - name: working-dir
+          emptyDir: {}
+---
+# Source: csi-driver-ipfs/templates/csi-ipfs-driverinfo.yaml
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: ipfs.csi.ptrvsrg.github.io
+spec:
+  attachRequired: false
+  volumeLifecycleModes:
+    - Persistent
+  fsGroupPolicy: File

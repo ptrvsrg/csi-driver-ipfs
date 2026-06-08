@@ -16,3 +16,17 @@ tests:
       - equal:
           path: spec.selector.matchLabels.app
           value: csi-ipfs-node
+  - it: should mount kubelet plugins directory for staging paths
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[2].volumeMounts[2].name
+          value: plugins-dir
+      - equal:
+          path: spec.template.spec.containers[2].volumeMounts[2].mountPath
+          value: /var/lib/kubelet/plugins
+      - equal:
+          path: spec.template.spec.volumes[2].name
+          value: plugins-dir
+      - equal:
+          path: spec.template.spec.volumes[2].hostPath.path
+          value: /var/lib/kubelet/plugins

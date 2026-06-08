@@ -164,6 +164,7 @@ gen/k8s-manifests: deps/helm ## Render Helm charts into deploy/k8s/v<appVersion>
 	$(HELM_BIN) dependency update charts/ipfs-cluster
 	$(HELM_BIN) template csi-driver-ipfs charts/csi-driver-ipfs --namespace csi-ipfs > "$(K8S_DEPLOY_DIR)/csi-driver-ipfs.yaml"
 	$(HELM_BIN) template ipfs-cluster charts/ipfs-cluster --namespace ipfs > "$(K8S_DEPLOY_DIR)/ipfs-cluster.yaml"
+	$(MAKE) gen/license-header
 	@echo "Rendered manifests to $(K8S_DEPLOY_DIR)"
 
 ##@ Testing

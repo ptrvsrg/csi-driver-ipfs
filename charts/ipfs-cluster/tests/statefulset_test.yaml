@@ -18,3 +18,35 @@ tests:
       - matchRegex:
           path: metadata.name
           pattern: test-release-ipfs-cluster$
+  - it: should keep Kubo capabilities required by the image entrypoint
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].securityContext.capabilities.add
+          content: CHOWN
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: CHOWN
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: SETGID
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: SETUID
+  - it: should run IPFS probes as the ipfs user
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.exec.command
+          value:
+            - /sbin/gosu
+            - ipfs
+            - ipfs
+            - id
+            - --offline
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.exec.command
+          value:
+            - /sbin/gosu
+            - ipfs
+            - ipfs
+            - id
+            - --offline
