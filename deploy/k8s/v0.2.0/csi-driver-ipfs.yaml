@@ -438,7 +438,7 @@ spec:
     # runOnControlPlane=true or runOnMaster=true only takes effect if affinity is not set
       nodeSelector:
         kubernetes.io/os: linux
-      priorityClassName: 
+      priorityClassName: ""
       securityContext:
         seccompProfile:
           type: RuntimeDefault
