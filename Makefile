@@ -15,10 +15,17 @@
 PROJECT_NAME := csi-driver-ipfs
 REGISTRY ?= ghcr.io/ptrvsrg
 IMAGE_NAME := $(REGISTRY)/$(PROJECT_NAME)
-VERSION_RAW ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+VERSION_RAW ?= dev
 VERSION ?= $(patsubst driver/%,%,$(VERSION_RAW))
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_DATE := $(shell date -u +"%Y-%m-%d")
+
+KUBO_VERSION := 0.41.0
+GOLANG_VERSION := 1.26.4
+ALPINE_VERSION := 3.23
+
+KUBO_IMAGE_NAME := $(REGISTRY)/$(PROJECT_NAME)/ipfs/kubo
+KUBO_IMAGE_VERSION := $(KUBO_VERSION)-$(VERSION)
 
 ## Location to install dependencies to
 GO_BIN ?= $(shell pwd)/bin
@@ -182,8 +189,8 @@ test/unit-coverage-html: test/unit-coverage ## Generate HTML coverage report.
 
 ##@ Build
 
-.PHONY: build/golang
-build/golang: $(GOBIN) verify/fmt verify/vet ## Build binary file.
+.PHONY: build/driver/golang
+build/driver/golang: $(GOBIN) verify/fmt verify/vet ## Build binary file.
 	CGO_ENABLED=0 go build \
 		-ldflags "-s -w \
 		-X main.driverVersion=$(VERSION) \
@@ -192,9 +199,33 @@ build/golang: $(GOBIN) verify/fmt verify/vet ## Build binary file.
 		-o bin/$(PROJECT_NAME) \
 		./cmd/$(PROJECT_NAME)/
 
-.PHONY: build/docker
-build/docker: ## Build docker image (single platform, visible in docker images).
+.PHONY: build/ipfs/docker
+build/ipfs/docker: ## Build docker image (single platform, visible in docker images).
 	docker build \
+	--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+	--build-arg ALPINE_VERSION=$(ALPINE_VERSION) \
+	--build-arg KUBO_VERSION=$(KUBO_VERSION) \
+	--network=host \
+	-t $(KUBO_IMAGE_NAME):$(KUBO_IMAGE_VERSION) \
+	3p/ipfs/kubo/
+
+.PHONY: build/ipfs/docker-buildx
+build/ipfs/docker-buildx: ## Build and push multi-platform image; result in registry only (not in docker images).
+	docker buildx build \
+	--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+	--build-arg ALPINE_VERSION=$(ALPINE_VERSION) \
+	--build-arg KUBO_VERSION=$(KUBO_VERSION) \
+	--platform="linux/amd64,linux/arm64" \
+	--network=host \
+	-t $(KUBO_IMAGE_NAME):$(KUBO_IMAGE_VERSION) \
+	3p/ipfs/kubo/
+
+.PHONY: build/driver/docker
+build/driver/docker: build/ipfs/docker ## Build docker image (single platform, visible in docker images).
+	docker build \
+	--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+	--build-arg ALPINE_VERSION=$(ALPINE_VERSION) \
+	--build-arg KUBO_VERSION=$(KUBO_IMAGE_VERSION) \
 	--build-arg VERSION=$(VERSION) \
 	--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 	--build-arg BUILD_DATE=$(BUILD_DATE) \
@@ -203,9 +234,12 @@ build/docker: ## Build docker image (single platform, visible in docker images).
 	-t $(IMAGE_NAME):latest \
 	.
 
-.PHONY: build/docker-buildx
-build/docker-buildx: ## Build and push multi-platform image; result in registry only (not in docker images).
+.PHONY: build/driver/docker-buildx
+build/driver/docker-buildx: build/ipfs/docker-buildx ## Build and push multi-platform image; result in registry only (not in docker images).
 	docker buildx build \
+	--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+	--build-arg ALPINE_VERSION=$(ALPINE_VERSION) \
+	--build-arg KUBO_VERSION=$(KUBO_IMAGE_VERSION) \
 	--build-arg VERSION=$(VERSION) \
 	--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 	--build-arg BUILD_DATE=$(BUILD_DATE) \

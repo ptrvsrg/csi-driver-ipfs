@@ -45,11 +45,29 @@ env:
   TRIVY_VERSION: v0.69.3
 
 jobs:
-  remove-label:
-    name: "Remove security label"
+  prepare:
+    name: "Prepare security run"
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'security/run' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Post workflow run comment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('No pull_request in event payload');
+              return;
+            }
+
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `Security workflow has been started.\n\nWorkflow run: ${runUrl}`,
+            });
+
       - name: Remove security/run label
         uses: mondeja/remove-labels-gh-action@v2
         with:
@@ -61,7 +79,7 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -105,7 +123,7 @@ jobs:
     name: docs-deps-scan
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     needs:
-      - remove-label
+      - prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -125,7 +143,7 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     strategy:
       matrix:
         chart:
@@ -188,7 +206,7 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -242,7 +260,7 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'security/run')
     runs-on: ubuntu-latest
     needs:
-      - remove-label
+      - prepare
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -1,6 +1,6 @@
 module github.com/ptrvsrg/csi-driver-ipfs/test/e2e
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.6.0
