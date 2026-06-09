@@ -31,7 +31,8 @@ permissions:
 
 env:
   NODE_VERSION: "20"
-  HELM_VERSION: v4.1.4
+  YARN_VERSION: "4.16.0"
+  HELM_VERSION: "v4.1.4"
 
 jobs:
   docs-build:
@@ -45,8 +46,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: yarn
-          cache-dependency-path: docs/yarn.lock
 
       - name: Cache Docusaurus incremental (.docusaurus)
         uses: actions/cache@v5
@@ -54,10 +53,17 @@ jobs:
           path: docs/.docusaurus
           key: ${{ runner.os }}-docusaurus-${{ hashFiles('docs/yarn.lock', 'docs/package.json', 'docs/docusaurus.config.js', 'docs/sidebars.js') }}
 
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Yarn
+        run: corepack prepare yarn@${{ env.YARN_VERSION }} --activate
+
+      - name: Install dependencies
+        run: yarn --cwd docs install --immutable
+
       - name: Build docs
-        run: |
-          yarn --cwd docs install --frozen-lockfile
-          yarn --cwd docs run build
+        run: yarn --cwd docs run build
 
       - name: Upload docs artifact
         uses: actions/upload-artifact@v4
