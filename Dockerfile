@@ -14,7 +14,7 @@
 
 ARG GOLANG_VERSION=1.26.4
 ARG ALPINE_VERSION=3.23
-ARG KUBO_VERSION=0.41.0
+ARG KUBO_VERSION=v0.42.0
 
 # Dependency stage
 FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION} AS deps
@@ -45,7 +45,7 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 \
     ./cmd/csi-driver-ipfs/
 
 # Build Kubo from the pinned upstream tag with local patches
-FROM ghcr.io/ptrvsrg/csi-driver-ipfs/ipfs/kubo:${KUBO_VERSION} AS kubo
+FROM ipfs/kubo:${KUBO_VERSION} AS kubo
 
 # Runtime stage
 FROM alpine:${ALPINE_VERSION} AS runtime
