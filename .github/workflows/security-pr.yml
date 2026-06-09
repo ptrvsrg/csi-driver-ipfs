@@ -12,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Security scans
+name: Security scans (PR)
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - '**'
   pull_request:
     types:
       - opened

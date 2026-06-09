@@ -18,6 +18,9 @@ name: CI DEV (Go/Docker)
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onpull_request
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     types:
       - opened
@@ -253,7 +256,6 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
             BUILD_DATE=${{ steps.ts.outputs.date }}
           tags: |
-            ${{ env.GHCR_IMAGE }}:dev-pr-${{ github.event.number }}
-            ${{ env.GHCR_IMAGE }}:dev-${{ github.sha }}
+            ${{ env.GHCR_IMAGE }}:main-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
