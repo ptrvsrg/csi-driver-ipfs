@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.6.0
-	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/ginkgo/v2 v2.31.0
 	github.com/onsi/gomega v1.41.0
 	k8s.io/api v0.36.1
 	k8s.io/apimachinery v0.36.1
