@@ -61,8 +61,7 @@ LABEL org.opencontainers.image.title="csi-driver-ipfs" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.build-date="${BUILD_DATE}"
 
-RUN echo "http://mirror.yandex.ru/mirrors/alpine/v3.24/main" > /etc/apk/repositories \
-    && echo "http://mirror.yandex.ru/mirrors/alpine/v3.24/community" >> /etc/apk/repositories \
+RUN apk upgrade --no-cache libcrypto3 libssl3 \
     && apk add --no-cache \
         bash \
         ca-certificates \
