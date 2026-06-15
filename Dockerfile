@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG GOLANG_VERSION=1.26.4
-ARG ALPINE_VERSION=3.23
+ARG ALPINE_VERSION=3.24
 ARG KUBO_VERSION=v0.42.0
 
 # Dependency stage
@@ -61,8 +61,8 @@ LABEL org.opencontainers.image.title="csi-driver-ipfs" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.build-date="${BUILD_DATE}"
 
-RUN echo "http://mirror.yandex.ru/mirrors/alpine/v3.23/main" > /etc/apk/repositories \
-    && echo "http://mirror.yandex.ru/mirrors/alpine/v3.23/community" >> /etc/apk/repositories \
+RUN echo "http://mirror.yandex.ru/mirrors/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories \
+    && echo "http://mirror.yandex.ru/mirrors/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories \
     && apk add --no-cache \
         bash \
         ca-certificates \
