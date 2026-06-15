@@ -17,7 +17,22 @@ name: E2E tests
 on:
   pull_request:
     types:
-    - labeled
+      - labeled
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to test, e.g. dev-<sha> or main-<sha>"
+        required: true
+        type: string
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event.pull_request.number ||
+      github.ref ||
+      github.run_id
+    }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -31,20 +46,90 @@ env:
   KIND_VERSION: v0.31.0
   GINKGO_VERSION: v2.31.0
   EXTERNAL_SNAPSHOTTER_VERSION: v8.5.0
+  GHCR_IMAGE: ghcr.io/ptrvsrg/csi-driver-ipfs
 
 jobs:
+  context:
+    name: context
+    runs-on: ubuntu-latest
+    outputs:
+      run_e2e: ${{ steps.ctx.outputs.run_e2e }}
+      is_pr_mode: ${{ steps.ctx.outputs.is_pr_mode }}
+      pr_number: ${{ steps.ctx.outputs.pr_number }}
+      image_tag: ${{ steps.ctx.outputs.image_tag }}
+      image_ref: ${{ steps.ctx.outputs.image_ref }}
+      should_manage_labels: ${{ steps.ctx.outputs.should_manage_labels }}
+      should_remove_run_label: ${{ steps.ctx.outputs.should_remove_run_label }}
+    steps:
+      - name: Resolve execution context
+        id: ctx
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_LABEL: ${{ github.event.label.name }}
+          INPUT_IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+          GHCR_IMAGE: ${{ env.GHCR_IMAGE }}
+        run: |
+          set -euo pipefail
+
+          run_e2e=false
+          is_pr_mode=false
+          pr_number=
+          image_tag=
+          image_ref=
+          should_manage_labels=false
+          should_remove_run_label=false
+
+          case "${EVENT_NAME}" in
+            pull_request)
+              if [ "${PR_LABEL:-}" = "e2e/run" ]; then
+                run_e2e=true
+                is_pr_mode=true
+                pr_number="${PR_NUMBER:-}"
+                image_tag="dev-${GITHUB_SHA}"
+                image_ref="${GHCR_IMAGE}:${image_tag}"
+                should_manage_labels=true
+                should_remove_run_label=true
+              fi
+              ;;
+            workflow_dispatch)
+              run_e2e=true
+              image_tag="${INPUT_IMAGE_TAG}"
+              image_ref="${GHCR_IMAGE}:${image_tag}"
+              ;;
+            *)
+              echo "::error::Unsupported event: ${EVENT_NAME}"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "run_e2e=${run_e2e}"
+            echo "is_pr_mode=${is_pr_mode}"
+            echo "pr_number=${pr_number}"
+            echo "image_tag=${image_tag}"
+            echo "image_ref=${image_ref}"
+            echo "should_manage_labels=${should_manage_labels}"
+            echo "should_remove_run_label=${should_remove_run_label}"
+          } >> "$GITHUB_OUTPUT"
+
   prepare:
     name: prepare
-    if: ${{ github.event.label.name == 'e2e/run' }}
+    needs:
+      - context
+    if: needs.context.outputs.run_e2e == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Post workflow run comment
+        if: needs.context.outputs.is_pr_mode == 'true'
         uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request?.number;
+            const pr = Number(process.env.PR_NUMBER);
             if (!pr) {
-              core.setFailed('No pull_request in event payload');
+              core.setFailed('No PR number available');
               return;
             }
 
@@ -57,6 +142,7 @@ jobs:
             });
 
       - name: Remove e2e/run label
+        if: needs.context.outputs.should_remove_run_label == 'true'
         uses: mondeja/remove-labels-gh-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -65,8 +151,9 @@ jobs:
   wait-image:
     name: wait-image
     needs:
+      - context
       - prepare
-    if: ${{ github.event.label.name == 'e2e/run' }}
+    if: needs.context.outputs.run_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 32
     steps:
@@ -77,38 +164,46 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for CSI driver image on GHCR (up to 30 min, every 10s)
+      - name: Wait for CSI driver image on GHCR
+        env:
+          IMAGE_REF: ${{ needs.context.outputs.image_ref }}
         run: |
           set -euo pipefail
-          image='ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}'
+          image="${IMAGE_REF}"
           timeout_secs=1800
           start_ts=$(date +%s)
+
           while true; do
             if docker manifest inspect "$image" >/dev/null 2>&1; then
               elapsed=$(( $(date +%s) - start_ts ))
               echo "OK: manifest present — ${image} (after ${elapsed}s)"
               exit 0
             fi
+
             elapsed=$(( $(date +%s) - start_ts ))
             if (( elapsed >= timeout_secs )); then
               break
             fi
-            echo "Image not ready yet (${elapsed}s / ${timeout_secs}s), retry in 10s…"
+
+            echo "Image not ready yet (${elapsed}s / ${timeout_secs}s), retry in 10s..."
             sleep 10
           done
+
           if docker manifest inspect "$image" >/dev/null 2>&1; then
             elapsed=$(( $(date +%s) - start_ts ))
             echo "OK: manifest present — ${image} (after ${elapsed}s)"
             exit 0
           fi
-          echo "::error title=E2E image missing::No manifest for ${image} within 30 minutes. Run or wait for CI DEV (Go) docker-build-push for this PR merge SHA, then re-add the e2e label."
+
+          echo "::error title=E2E image missing::No manifest for ${image} within 30 minutes."
           exit 1
 
   e2e:
     name: e2e
     needs:
+      - context
       - wait-image
-    if: ${{ github.event.label.name == 'e2e/run' }}
+    if: needs.context.outputs.run_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -185,11 +280,10 @@ jobs:
           kubectl --context kind-csi-ipfs-e2e wait --for=condition=ready pod -l app.kubernetes.io/name=ipfs-cluster -n ipfs --timeout=120s
 
       - name: Load CSI Driver image
-        working-directory: test/e2e
         run: |
-          docker image pull ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}
-          docker image tag ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }} ghcr.io/ptrvsrg/csi-driver-ipfs:latest
-          kind load docker-image ghcr.io/ptrvsrg/csi-driver-ipfs:latest --name csi-ipfs-e2e
+          docker image pull "${{ needs.context.outputs.image_ref }}"
+          docker image tag "${{ needs.context.outputs.image_ref }}" "${{ env.GHCR_IMAGE }}:latest"
+          kind load docker-image "${{ env.GHCR_IMAGE }}:latest" --name csi-ipfs-e2e
 
       - name: Deploy CSI IPFS
         run: |
@@ -214,10 +308,11 @@ jobs:
   e2e-label-result:
     name: e2e-label-result
     needs:
+      - context
       - prepare
       - wait-image
       - e2e
-    if: always()
+    if: needs.context.outputs.should_manage_labels == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Apply e2e/success (remove e2e/fail)
@@ -226,24 +321,35 @@ jobs:
           needs.wait-image.result == 'success' &&
           needs.e2e.result == 'success'
         uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request?.number;
+            const pr = Number(process.env.PR_NUMBER);
             if (!pr) {
-              core.setFailed('No pull_request in event payload');
+              core.setFailed('No PR number available');
               return;
             }
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+
             try {
               await github.rest.issues.removeLabel({
-                owner, repo, issue_number: pr, name: 'e2e/fail',
+                owner,
+                repo,
+                issue_number: pr,
+                name: 'e2e/fail',
               });
             } catch (e) {
               if (e.status !== 404) throw e;
             }
+
             await github.rest.issues.addLabels({
-              owner, repo, issue_number: pr, labels: ['e2e/success'],
+              owner,
+              repo,
+              issue_number: pr,
+              labels: ['e2e/success'],
             });
 
       - name: Apply e2e/fail (remove e2e/success)
@@ -255,22 +361,33 @@ jobs:
           needs.e2e.result == 'failure' ||
           needs.e2e.result == 'cancelled'
         uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request?.number;
+            const pr = Number(process.env.PR_NUMBER);
             if (!pr) {
-              core.setFailed('No pull_request in event payload');
+              core.setFailed('No PR number available');
               return;
             }
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+
             try {
               await github.rest.issues.removeLabel({
-                owner, repo, issue_number: pr, name: 'e2e/success',
+                owner,
+                repo,
+                issue_number: pr,
+                name: 'e2e/success',
               });
             } catch (e) {
               if (e.status !== 404) throw e;
             }
+
             await github.rest.issues.addLabels({
-              owner, repo, issue_number: pr, labels: ['e2e/fail'],
+              owner,
+              repo,
+              issue_number: pr,
+              labels: ['e2e/fail'],
             });

@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Security scans (PR)
+name: Security scans
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     types:
       - opened
@@ -23,35 +26,126 @@ on:
       - edited
       - labeled
       - unlabeled
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to scan, e.g. main-<sha> or dev-<sha>"
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event.pull_request.number ||
+      github.ref ||
+      github.run_id
+    }}
   cancel-in-progress: false
 
 permissions:
   contents: read
   pull-requests: write
   issues: write
+  packages: read
 
 env:
   NODE_VERSION: "24.14.0"
   HELM_VERSION: v4.1.4
   TRIVY_SEVERITY: HIGH,CRITICAL
   TRIVY_VERSION: v0.69.3
+  GHCR_IMAGE: ghcr.io/ptrvsrg/csi-driver-ipfs
 
 jobs:
+  context:
+    name: context
+    runs-on: ubuntu-latest
+    outputs:
+      run_scans: ${{ steps.ctx.outputs.run_scans }}
+      is_pr_mode: ${{ steps.ctx.outputs.is_pr_mode }}
+      pr_number: ${{ steps.ctx.outputs.pr_number }}
+      image_tag: ${{ steps.ctx.outputs.image_tag }}
+      image_ref: ${{ steps.ctx.outputs.image_ref }}
+      should_manage_labels: ${{ steps.ctx.outputs.should_manage_labels }}
+      should_remove_run_label: ${{ steps.ctx.outputs.should_remove_run_label }}
+    steps:
+      - name: Resolve execution context
+        id: ctx
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_LABEL: ${{ github.event.label.name }}
+          INPUT_IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+          GHCR_IMAGE: ${{ env.GHCR_IMAGE }}
+        run: |
+          set -euo pipefail
+
+          run_scans=false
+          is_pr_mode=false
+          pr_number=
+          image_tag=
+          image_ref=
+          should_manage_labels=false
+          should_remove_run_label=false
+
+          case "${EVENT_NAME}" in
+            push)
+              if [ "${REF}" = "refs/heads/main" ]; then
+                run_scans=true
+                image_tag="main-${SHA}"
+                image_ref="${GHCR_IMAGE}:${image_tag}"
+              fi
+              ;;
+            pull_request)
+              if [ "${PR_LABEL:-}" = "security/run" ]; then
+                run_scans=true
+                is_pr_mode=true
+                pr_number="${PR_NUMBER:-}"
+                image_tag="dev-${SHA}"
+                image_ref="${GHCR_IMAGE}:${image_tag}"
+                should_manage_labels=true
+                should_remove_run_label=true
+              fi
+              ;;
+            workflow_dispatch)
+              run_scans=true
+              image_tag="${INPUT_IMAGE_TAG}"
+              image_ref="${GHCR_IMAGE}:${image_tag}"
+              ;;
+            *)
+              echo "::error::Unsupported event: ${EVENT_NAME}"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "run_scans=${run_scans}"
+            echo "is_pr_mode=${is_pr_mode}"
+            echo "pr_number=${pr_number}"
+            echo "image_tag=${image_tag}"
+            echo "image_ref=${image_ref}"
+            echo "should_manage_labels=${should_manage_labels}"
+            echo "should_remove_run_label=${should_remove_run_label}"
+          } >> "$GITHUB_OUTPUT"
+
   prepare:
     name: prepare
-    if: ${{ github.event.label.name == 'security/run' }}
+    needs:
+      - context
+    if: needs.context.outputs.run_scans == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Post workflow run comment
+        if: needs.context.outputs.is_pr_mode == 'true'
         uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request?.number;
+            const pr = Number(process.env.PR_NUMBER);
             if (!pr) {
-              core.setFailed('No pull_request in event payload');
+              core.setFailed('No PR number available');
               return;
             }
 
@@ -64,6 +158,7 @@ jobs:
             });
 
       - name: Remove security/run label
+        if: needs.context.outputs.should_remove_run_label == 'true'
         uses: mondeja/remove-labels-gh-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -73,7 +168,9 @@ jobs:
     name: golang-code-scan
     runs-on: ubuntu-latest
     needs:
+      - context
       - prepare
+    if: needs.context.outputs.run_scans == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -97,7 +194,9 @@ jobs:
   golang-deps-scan:
     name: golang-deps-scan
     needs:
+      - context
       - golang-code-scan
+    if: needs.context.outputs.run_scans == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -115,7 +214,9 @@ jobs:
   docs-deps-scan:
     name: docs-deps-scan
     needs:
+      - context
       - prepare
+    if: needs.context.outputs.run_scans == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -134,12 +235,14 @@ jobs:
     name: helm-scan
     runs-on: ubuntu-latest
     needs:
+      - context
       - prepare
+    if: needs.context.outputs.run_scans == 'true'
     strategy:
       matrix:
         chart:
-          - "ipfs-cluster"
-          - "csi-driver-ipfs"
+          - ipfs-cluster
+          - csi-driver-ipfs
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -161,13 +264,15 @@ jobs:
   kubernetes-manifests-scan:
     name: kubernetes-manifests-scan
     needs:
+      - context
       - helm-scan
+    if: needs.context.outputs.run_scans == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         chart:
-          - "ipfs-cluster"
-          - "csi-driver-ipfs"
+          - ipfs-cluster
+          - csi-driver-ipfs
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -195,7 +300,9 @@ jobs:
     name: dockerfile-scan
     runs-on: ubuntu-latest
     needs:
+      - context
       - prepare
+    if: needs.context.outputs.run_scans == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -212,7 +319,9 @@ jobs:
   wait-image:
     name: wait-image
     needs:
+      - context
       - prepare
+    if: needs.context.outputs.run_scans == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 32
     steps:
@@ -223,38 +332,47 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for CSI driver image on GHCR (up to 30 min, every 10s)
+      - name: Wait for CSI driver image on GHCR
+        env:
+          IMAGE_REF: ${{ needs.context.outputs.image_ref }}
         run: |
           set -euo pipefail
-          image='ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}'
+          image="${IMAGE_REF}"
           timeout_secs=1800
           start_ts=$(date +%s)
+
           while true; do
             if docker manifest inspect "$image" >/dev/null 2>&1; then
               elapsed=$(( $(date +%s) - start_ts ))
               echo "OK: manifest present — ${image} (after ${elapsed}s)"
               exit 0
             fi
+
             elapsed=$(( $(date +%s) - start_ts ))
             if (( elapsed >= timeout_secs )); then
               break
             fi
-            echo "Image not ready yet (${elapsed}s / ${timeout_secs}s), retry in 10s…"
+
+            echo "Image not ready yet (${elapsed}s / ${timeout_secs}s), retry in 10s..."
             sleep 10
           done
+
           if docker manifest inspect "$image" >/dev/null 2>&1; then
             elapsed=$(( $(date +%s) - start_ts ))
             echo "OK: manifest present — ${image} (after ${elapsed}s)"
             exit 0
           fi
-          echo "::error title=E2E image missing::No manifest for ${image} within 30 minutes. Run or wait for CI DEV (Go) docker-build-push for this PR merge SHA, then re-add the e2e label."
+
+          echo "::error title=Image missing::No manifest for ${image} within 30 minutes."
           exit 1
 
   docker-image-scan:
     name: docker-image-scan
     needs:
+      - context
       - dockerfile-scan
       - wait-image
+    if: needs.context.outputs.run_scans == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -269,15 +387,17 @@ jobs:
           version: ${{ env.TRIVY_VERSION }}
           cache: true
 
-      - name: Build and scan Docker image
+      - name: Scan Docker image
         run: |
-          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "ghcr.io/ptrvsrg/csi-driver-ipfs:dev-${{ github.sha }}"
+          trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "${{ needs.context.outputs.image_ref }}"
 
   shell-scripts-scan:
     name: shell-scripts-scan
     runs-on: ubuntu-latest
     needs:
+      - context
       - prepare
+    if: needs.context.outputs.run_scans == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -300,6 +420,7 @@ jobs:
   security-label-result:
     name: security-label-result
     needs:
+      - context
       - prepare
       - golang-code-scan
       - golang-deps-scan
@@ -310,6 +431,7 @@ jobs:
       - wait-image
       - docker-image-scan
       - shell-scripts-scan
+    if: needs.context.outputs.should_manage_labels == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Apply security/success (remove security/fail)
@@ -325,25 +447,37 @@ jobs:
           needs.docker-image-scan.result == 'success' &&
           needs.shell-scripts-scan.result == 'success'
         uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request?.number;
+            const pr = Number(process.env.PR_NUMBER);
             if (!pr) {
-              core.setFailed('No pull_request in event payload');
+              core.setFailed('No PR number available');
               return;
             }
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+
             try {
               await github.rest.issues.removeLabel({
-                owner, repo, issue_number: pr, name: 'security/fail',
+                owner,
+                repo,
+                issue_number: pr,
+                name: 'security/fail',
               });
             } catch (e) {
               if (e.status !== 404) throw e;
             }
+
             await github.rest.issues.addLabels({
-              owner, repo, issue_number: pr, labels: ['security/success'],
+              owner,
+              repo,
+              issue_number: pr,
+              labels: ['security/success'],
             });
+
       - name: Apply security/fail (remove security/success)
         if: >-
           needs.prepare.result == 'failure' ||
@@ -363,26 +497,37 @@ jobs:
           needs.wait-image.result == 'failure' ||
           needs.wait-image.result == 'cancelled' ||
           needs.docker-image-scan.result == 'failure' ||
-          needs.docker-image-scan.result == 'cancelled'||
+          needs.docker-image-scan.result == 'cancelled' ||
           needs.shell-scripts-scan.result == 'failure' ||
           needs.shell-scripts-scan.result == 'cancelled'
         uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request?.number;
+            const pr = Number(process.env.PR_NUMBER);
             if (!pr) {
-              core.setFailed('No pull_request in event payload');
+              core.setFailed('No PR number available');
               return;
             }
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+
             try {
               await github.rest.issues.removeLabel({
-                owner, repo, issue_number: pr, name: 'security/success',
+                owner,
+                repo,
+                issue_number: pr,
+                name: 'security/success',
               });
             } catch (e) {
               if (e.status !== 404) throw e;
             }
+
             await github.rest.issues.addLabels({
-              owner, repo, issue_number: pr, labels: ['security/fail'],
+              owner,
+              repo,
+              issue_number: pr,
+              labels: ['security/fail'],
             });
