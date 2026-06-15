@@ -312,7 +312,7 @@ jobs:
       - prepare
       - wait-image
       - e2e
-    if: needs.context.outputs.should_manage_labels == 'true'
+    if: ${{ always() && needs.context.outputs.should_manage_labels == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Apply e2e/success (remove e2e/fail)

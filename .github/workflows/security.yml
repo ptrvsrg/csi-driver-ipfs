@@ -431,7 +431,7 @@ jobs:
       - wait-image
       - docker-image-scan
       - shell-scripts-scan
-    if: needs.context.outputs.should_manage_labels == 'true'
+    if: ${{ always() && needs.context.outputs.should_manage_labels == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Apply security/success (remove security/fail)
