@@ -250,6 +250,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
+          pull: true
           push: true
           build-args: |
             VERSION=${{ github.sha }}
@@ -267,6 +268,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
+          pull: true
           push: true
           build-args: |
             VERSION=${{ github.sha }}
