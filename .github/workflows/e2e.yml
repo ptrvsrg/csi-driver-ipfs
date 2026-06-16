@@ -50,7 +50,7 @@ env:
 
 jobs:
   context:
-    name: context
+    name: "Prepare: resolve context"
     runs-on: ubuntu-latest
     outputs:
       run_e2e: ${{ steps.ctx.outputs.run_e2e }}
@@ -114,7 +114,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   prepare:
-    name: prepare
+    name: "Prepare: comment and remove trigger labels"
     needs:
       - context
     if: needs.context.outputs.run_e2e == 'true'
@@ -149,7 +149,7 @@ jobs:
           labels: e2e/run
 
   wait-image:
-    name: wait-image
+    name: "Docker: wait image"
     needs:
       - context
       - prepare
@@ -199,7 +199,7 @@ jobs:
           exit 1
 
   e2e:
-    name: e2e
+    name: "E2E: run tests"
     needs:
       - context
       - wait-image
@@ -306,7 +306,7 @@ jobs:
           kind delete cluster --name csi-ipfs-e2e 2>/dev/null || true
 
   e2e-label-result:
-    name: e2e-label-result
+    name: "Finalize: add result labels"
     needs:
       - context
       - prepare

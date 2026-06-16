@@ -57,7 +57,7 @@ env:
 
 jobs:
   context:
-    name: context
+    name: "Prepare: resolve context"
     runs-on: ubuntu-latest
     outputs:
       run_scans: ${{ steps.ctx.outputs.run_scans }}
@@ -130,7 +130,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   prepare:
-    name: prepare
+    name: "Prepare: comment and remove trigger labels"
     needs:
       - context
     if: needs.context.outputs.run_scans == 'true'
@@ -165,7 +165,7 @@ jobs:
           labels: security/run
 
   golang-code-scan:
-    name: golang-code-scan
+    name: "Golang: code scan"
     runs-on: ubuntu-latest
     needs:
       - context
@@ -192,7 +192,7 @@ jobs:
         run: gosec -exclude-generated ./...
 
   golang-deps-scan:
-    name: golang-deps-scan
+    name: "Golang: deps scan"
     needs:
       - context
       - golang-code-scan
@@ -212,7 +212,7 @@ jobs:
         run: trivy fs --quiet --scanners vuln --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 --skip-dirs docs .
 
   docs-deps-scan:
-    name: docs-deps-scan
+    name: "Docs: deps scan"
     needs:
       - context
       - prepare
@@ -232,7 +232,7 @@ jobs:
         run: trivy fs --quiet --scanners vuln --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 docs
 
   helm-scan:
-    name: helm-scan
+    name: "Helm: template scan"
     runs-on: ubuntu-latest
     needs:
       - context
@@ -262,7 +262,7 @@ jobs:
         run: trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 --ignorefile "charts/${{ matrix.chart }}/.trivyignore" "charts/${{ matrix.chart }}"
 
   kubernetes-manifests-scan:
-    name: kubernetes-manifests-scan
+    name: "K8S: manifests scan"
     needs:
       - context
       - helm-scan
@@ -297,7 +297,7 @@ jobs:
           trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 --ignorefile "charts/${{ matrix.chart }}/.trivyignore" "charts/dist/${{ matrix.chart }}-rendered.yaml"
 
   dockerfile-scan:
-    name: dockerfile-scan
+    name: "Docker: dockerfile scan"
     runs-on: ubuntu-latest
     needs:
       - context
@@ -317,7 +317,7 @@ jobs:
         run: trivy config --quiet --severity "${{ env.TRIVY_SEVERITY }}" --exit-code 1 Dockerfile
 
   wait-image:
-    name: wait-image
+    name: "Docker: wait image"
     needs:
       - context
       - prepare
@@ -367,7 +367,7 @@ jobs:
           exit 1
 
   docker-image-scan:
-    name: docker-image-scan
+    name: "Docker: image scan"
     needs:
       - context
       - dockerfile-scan
@@ -392,7 +392,7 @@ jobs:
           trivy image --quiet --severity "${{ env.TRIVY_SEVERITY }}" --ignorefile .trivyignore.image.yaml --exit-code 1 "${{ needs.context.outputs.image_ref }}"
 
   shell-scripts-scan:
-    name: shell-scripts-scan
+    name: "Shell: scripts scan"
     runs-on: ubuntu-latest
     needs:
       - context
@@ -418,7 +418,7 @@ jobs:
           shellcheck -x "${shell_scripts[@]}"
 
   security-label-result:
-    name: security-label-result
+    name: "Finalize: add result labels"
     needs:
       - context
       - prepare
