@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   label:
-    name: Add base labels
+    name: "Add base labels"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,7 +47,7 @@ jobs:
           sync-labels: true
 
   pr-size:
-    name: Add PR size labels
+    name: "Add PR size labels"
     runs-on: ubuntu-latest
     steps:
       - name: Label PR by changed lines
