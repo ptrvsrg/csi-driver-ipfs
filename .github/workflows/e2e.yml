@@ -208,7 +208,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Cache Kind + kubectl (hosted tool cache)
         uses: actions/cache@v5
