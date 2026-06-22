@@ -35,7 +35,7 @@ jobs:
       chart: ${{ steps.meta.outputs.chart }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Verify tag matches Chart.yaml version
         run: |
@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Cache Helm CLI (hosted tool cache)
         uses: actions/cache@v5
