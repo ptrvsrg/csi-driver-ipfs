@@ -36,8 +36,8 @@ github.com/cockroachdb/swiss v0.0.0-20251224182025-b0f6560f979b h1:VXvSNzmr8hMj8
 github.com/cockroachdb/swiss v0.0.0-20251224182025-b0f6560f979b/go.mod h1:yBRu/cnL4ks9bgy4vAASdjIW+/xMlFwuHKqtmh3GZQg=
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 h1:zuQyyAKVxetITBuuhv3BI9cMrmStnpT18zmgmTxunpo=
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06/go.mod h1:7nc4anLGjupUW/PeY5qiNYsdNXj7zopG+eqsS7To5IQ=
-github.com/container-storage-interface/spec v1.12.0 h1:zrFOEqpR5AghNaaDG4qyedwPBqU2fU0dWjLQMP/azK0=
-github.com/container-storage-interface/spec v1.12.0/go.mod h1:txsm+MA2B2WDa5kW69jNbqPnvTtfvZma7T/zsAZ9qX8=
+github.com/container-storage-interface/spec v1.13.0 h1:6ja3nYoACisewTPAAZkJ1pbf4+1ehhvt9Z/nYgWGHGw=
+github.com/container-storage-interface/spec v1.13.0/go.mod h1:fPZ7EFHYJwIwc9CMcoaT/yIhFTdToocYVtyafMG7EDM=
 github.com/crackcomm/go-gitignore v0.0.0-20241020182519-7843d2ba8fdf h1:dwGgBWn84wUS1pVikGiruW+x5XM4amhjaZO20vCjay4=
 github.com/crackcomm/go-gitignore v0.0.0-20241020182519-7843d2ba8fdf/go.mod h1:p1d6YEZWvFzEh4KLyvBcVSnrfNDDvK2zfK/4x2v/4pE=
 github.com/cskr/pubsub v1.0.2 h1:vlOzMhl6PFn60gRlTQQsIfVwaPB/B/8MziK8FhEPt/0=
