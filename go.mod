@@ -1,6 +1,6 @@
 module github.com/ptrvsrg/csi-driver-ipfs
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/container-storage-interface/spec v1.13.0
@@ -8,7 +8,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/ipfs/boxo v0.42.1
 	github.com/ipfs/go-cid v0.6.2
-	github.com/ipfs/kubo v0.42.0
+	github.com/ipfs/kubo v0.43.0
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.6.0
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/rs/zerolog v1.35.1
