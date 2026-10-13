@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GOLANG_VERSION=1.26.4
+ARG GOLANG_VERSION=1.26.5
 ARG ALPINE_VERSION=3.24
-ARG KUBO_VERSION=v0.42.0
+ARG KUBO_VERSION=v0.43.1
 
 # Dependency stage
 FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION} AS deps
