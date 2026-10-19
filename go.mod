@@ -9,7 +9,7 @@ require (
 	github.com/ipfs/boxo v0.43.0
 	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/kubo v0.43.1
-	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.6.0
+	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.7.0
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.12.1
