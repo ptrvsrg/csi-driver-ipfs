@@ -3,7 +3,7 @@ module github.com/ptrvsrg/csi-driver-ipfs/test/e2e
 go 1.26.5
 
 require (
-	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.6.0
+	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.7.0
 	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
 	k8s.io/api v0.37.1
